@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -O2 -std=c23 -Wall -Werror
+CFLAGS = -O2 -std=c23 -Wall -Werror -lsqlite3
 BIN_DIR = ./bin
 SRC_DIR = ./src
 OBJ = $(BIN_DIR)/cli.o $(BIN_DIR)/server.o $(BIN_DIR)/client.o $(BIN_DIR)/database.o
