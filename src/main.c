@@ -10,7 +10,7 @@ int main() {
     return 1;
   }
 
-  cli_loop();
+  cli_loop(db);
 
   sqlite3_close(db);
   return 0;

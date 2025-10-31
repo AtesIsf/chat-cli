@@ -8,4 +8,6 @@
 
 sqlite3 *initialize_db();
 
+const char **get_chats(sqlite3 *, int *);
+
 #endif

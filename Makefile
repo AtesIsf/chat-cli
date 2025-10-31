@@ -14,5 +14,5 @@ chat-cli: $(SRC_DIR)/main.c $(OBJ)
 
 clean:
 	rm -f ./bin/*
-	rm -f server
+	rm -f chat-cli
 	rm -f vgcore.*
