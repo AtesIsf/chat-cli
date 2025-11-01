@@ -47,7 +47,13 @@ void cli_loop(sqlite3 *db) {
     printf("- Select a chat to go to by typing a number below (1-%lu):\n", i);
     printf("- Or, select %lu to exit Chat-CLI.\n", i + 1);
     scanf("%d", &choice);
+
     clear_screen();
+
+    // This equals the exit choice's number due to the loop
+    if (choice == i + 1) {
+      terminate_program = true;
+    }
   }
 
   for (size_t i = 0; i < n_chats; i++) {
