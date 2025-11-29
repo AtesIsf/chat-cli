@@ -122,3 +122,104 @@ const char **get_chats(sqlite3 *db, int *n_chats) {
   return usernames;
 }
 
+/*
+ * Fetches the corresponding id of the given username from the databse.
+ * Asserts the parameters are not NULL. Returns -1 if the given username
+ * does not exist in the database.
+ */
+
+int get_id_of_username(sqlite3 *db, const char *username) {
+  assert(db != NULL && username != NULL);
+  int id = -1;
+
+  const char *cmd = "SELECT id FROM chats WHERE username = ?;";
+  sqlite3_stmt *statement = NULL;
+
+  int status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] A problem occured while preparing to fetch id.\n");
+    return id;
+  }
+
+  sqlite3_bind_text(statement, 1, username, -1, SQLITE_TRANSIENT);
+  status_code = sqlite3_step(statement);
+
+  if (status_code == SQLITE_ROW) {
+    id = sqlite3_column_int(statement, 0);
+  } else {
+    fprintf(stderr, "[ERROR] A problem occured while fetching id.\n");
+  }
+
+  sqlite3_finalize(statement);
+  return id;
+}
+
+/*
+ * Gets all messages of the chat with the given id in a sorted manner. Updates
+ * the given int * to match the number of messages found. Asserts the given
+ * pointers are not NULL and the given chat id is nonnegative. Also throws an
+ * assertion error if a malloc fails.
+ */
+
+msg_t *get_messages_from_chat_id(sqlite3 *db, int chat_id, int *n_msgs) {
+  assert(db != NULL && chat_id >= 0 && n_msgs != NULL);
+  msg_t *messages = NULL;
+  *n_msgs = 0;
+
+  const char *count_cmd = "SELECT COUNT(*) FROM messages WHERE chat_id = ?;";
+  sqlite3_stmt *count_statement = NULL;
+
+  int status_code = sqlite3_prepare_v2(db, count_cmd, -1, &count_statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to prepare to count messages.");
+    return messages;
+  }
+  sqlite3_bind_int(count_statement, 1, chat_id);
+  status_code = sqlite3_step(count_statement);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to count messages.");
+    sqlite3_finalize(count_statement);
+    return messages;
+  }
+  *n_msgs = sqlite3_column_int(count_statement, 0);
+  sqlite3_finalize(count_statement);
+
+  messages = malloc(sizeof(msg_t) * (*n_msgs));
+  assert(messages != NULL);
+
+  const char *cmd = "SELECT is_sent, content, timestamp FROM messages"
+                    "WHERE chat_id = ? ORDER BY timestamp ASC;";
+
+  sqlite3_stmt *statement = NULL;
+  status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to prepare to fetch messages\n");
+    return messages;
+  }
+
+  sqlite3_bind_int(statement, 1, chat_id);
+
+  int index = 0;
+  while (sqlite3_step(statement) == SQLITE_ROW) {
+    int is_sent = sqlite3_column_int(statement, 0);
+    const char *content = (const char *) sqlite3_column_text(statement, 1);
+    const char *timestamp = (const char *) sqlite3_column_text(statement, 2);
+
+    if (content == NULL) {
+      content = "";
+    }
+    if (timestamp == NULL) {
+      timestamp = "";
+    }
+
+    messages[index].is_sent = is_sent == 1 ? true : false; 
+    messages[index].content = strdup(content);
+    messages[index].timestamp = strdup(timestamp);
+    
+    index++;
+  }
+
+  sqlite3_finalize(statement);
+  return messages;
+}
+

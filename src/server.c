@@ -35,5 +35,5 @@ void send_message(comms_t *comms, const char *addr) {
 }
 
 void deinitialize_server(comms_t *comms) {
-
+  assert(comms != NULL);
 }

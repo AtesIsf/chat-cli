@@ -12,6 +12,8 @@ void clear_screen();
 
 void header_print();
 
+void display_chat_interface(sqlite3 *, int, const char *);
+
 void handle_choice(int);
 
 void cli_loop(sqlite3 *);
