@@ -51,7 +51,13 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
     
     // TODO: Implement this after finishing message displaying
     // Also, inputting "`" causes a bug, fix it.
-    scanf("%d", &choice);
+    int status_code = scanf("%d", &choice);
+    if (status_code != 1) {
+      char temp = '\n';
+      do {
+        temp = getchar();
+      } while (temp != '\n' && temp != EOF);
+    }
     exit_screen = choice == 1 ? true : false;
   }
 
@@ -81,7 +87,13 @@ void display_settings(configs_t *conf) {
     printf("* Client Port: %lu\n", conf->client_port);
     printf("* Server Port: %lu\n", conf->server_port);
 
-    scanf("%d", &choice);
+    int status_code = scanf("%d", &choice);
+    if (status_code != 1) {
+      char temp = '\n';
+      do {
+        temp = getchar();
+      } while (temp != '\n' && temp != EOF);
+    }
     exit_screen = choice == 1 ? true : false;
     // TODO: editing logic
     if (choice ==  2) {
@@ -123,8 +135,13 @@ void cli_loop(sqlite3 *db, configs_t *conf) {
     printf("- Select %lu to exit Chat-CLI.\n", i + 1);
     printf("- Select %lu to view settings.\n", i + 2);
 
-    // TODO: inputting "`" causes a bug, fix it.
-    scanf("%d", &choice);
+    int status_code = scanf("%d", &choice);
+    if (status_code != 1) {
+      char temp = '\n';
+      do {
+        temp = getchar();
+      } while (temp != '\n' && temp != EOF);
+    }
 
     // This equals the exit choice's number due to the loop
     if (choice == i + 1) {
