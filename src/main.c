@@ -15,7 +15,7 @@ int main() {
     return 1;
   }
 
-  cli_loop(db);
+  cli_loop(db, conf);
 
   sqlite3_close(db);
   free(conf);

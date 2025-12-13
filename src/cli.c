@@ -31,6 +31,8 @@ void header_print() {
 void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
   assert(db != NULL && id >= 0);
   int n_msgs = 0;
+
+  // TODO: You may not want to load all messages at the same time
   msg_t *messages = get_messages_from_chat_id(db, id, &n_msgs);
 
   bool exit_screen = false;
@@ -59,11 +61,42 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
 }
 
 /*
+ * Displays the configurations. Throws an assertion
+ * if the parameter is NULL. Can also edit configs if requested.
+ */
+
+void display_settings(configs_t *conf) {
+  assert(conf != NULL);
+
+  bool exit_screen = false;
+  while (!exit_screen) {
+    int choice = -1;
+    clear_screen();
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+    puts(">> Settings");
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+    puts(">> Select 1 to exit");
+    puts(">> Select 2 to edit");
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+    printf("* Client Port: %lu\n", conf->client_port);
+    printf("* Server Port: %lu\n", conf->server_port);
+
+    scanf("%d", &choice);
+    exit_screen = choice == 1 ? true : false;
+    // TODO: editing logic
+    if (choice ==  2) {
+
+    }
+  }
+  clear_screen();
+}
+
+/*
  * The loop that serves as the interface for the user. Asserts
  * that the parameter is not NULL.
  */
 
-void cli_loop(sqlite3 *db) {
+void cli_loop(sqlite3 *db, configs_t *conf) {
   assert(db != NULL);
 
   signal(SIGINT, terminate);
@@ -87,7 +120,8 @@ void cli_loop(sqlite3 *db) {
       printf("%lu) %s\n", i + 1, chat_names[i]);
     }
     printf("- Select a chat to go to by typing a number below (1-%lu):\n", i);
-    printf("- Or, select %lu to exit Chat-CLI.\n", i + 1);
+    printf("- Select %lu to exit Chat-CLI.\n", i + 1);
+    printf("- Select %lu to view settings.\n", i + 2);
 
     // TODO: inputting "`" causes a bug, fix it.
     scanf("%d", &choice);
@@ -95,7 +129,9 @@ void cli_loop(sqlite3 *db) {
     // This equals the exit choice's number due to the loop
     if (choice == i + 1) {
       terminate_program = true;
-    } else if (choice > i + 1) {
+    } else if (choice == i + 2) {
+      display_settings(conf);
+    } else if (choice > i + 2) {
       // Invalid input, don't try to display a non-existant chat
       clear_screen();
     } else {
