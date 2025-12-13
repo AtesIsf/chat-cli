@@ -1,11 +1,11 @@
-# chat-cli
+# Chat-Cli
 
 `chat-cli` is a **learning-focused, decentralized command-line chat application written in C**.  
 The goal of this project is to **better understand the principles of**: networking, cryptography, systems programming, and system design.
 
 ---
 
-## Project Goals
+## 🎯 Project Goals
 
 The main objectives of this project are:
 
@@ -20,7 +20,7 @@ This is a **learning experiment**, and many components are intentionally impleme
 
 ---
 
-## High-Level Architecture
+## 🏛️ High-Level Architecture
 
 At a conceptual level, the system consists of:
 
@@ -51,9 +51,7 @@ This model reflects how many real-world systems balance decentralization with pr
 
 ---
 
-## Decentralization Model
-
-This project explores **practical decentralization**, not absolutist purity.
+## 🖧 Decentralization Model
 
 - No central message relay
 - No centralized conversation storage
@@ -61,9 +59,7 @@ This project explores **practical decentralization**, not absolutist purity.
 
 ---
 
-## Build & Run
-
-> 🚧 Build instructions will evolve as the project grows.
+## 🔨 Build & Run
 
 ```sh
 git clone https://github.com/AtesIsf/chat-cli
@@ -75,7 +71,7 @@ make
 
 ---
 
-## Project Status
+## 🛈 Project Status
 
 This project is **actively evolving**.
 
@@ -87,7 +83,7 @@ Expect breaking changes.
 
 ---
 
-## Disclaimer
+## ⚠️ Disclaimer
 
 This project is for **educational purposes only**.
 
