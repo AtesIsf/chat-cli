@@ -61,13 +61,28 @@ This model reflects how many real-world systems balance decentralization with pr
 
 ## 🔨 Build & Run
 
+> Clone the project
 ```sh
 git clone https://github.com/AtesIsf/chat-cli
 cd chat-cli/
+```
+
+> Make and run the client
+```sh
 make
 ./chat-cli
 ```
 
+> (Optional, not intended for client use) Make and run the lookup server
+```sh
+make lookup
+./lookup
+```
+
+> Cleanup binaries
+```sh
+make clean
+```
 
 ---
 

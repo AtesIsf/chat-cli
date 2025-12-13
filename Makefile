@@ -21,4 +21,5 @@ lookup: $(SRC_DIR)/lookup.c $(LOOKUP_OBJ)
 clean:
 	rm -f ./bin/*
 	rm -f chat-cli
+	rm -f lookup
 	rm -f vgcore.*
