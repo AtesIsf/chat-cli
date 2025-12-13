@@ -60,6 +60,7 @@ This model reflects how many real-world systems balance decentralization with pr
 ---
 
 ## 🔨 Build & Run
+⚠️ Meant for POSIX-compliant operating systems, currently only tested on Linux. 
 
 > Clone the project
 ```sh
