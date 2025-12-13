@@ -21,8 +21,8 @@ sqlite3 *initialize_db() {
   memcpy(database_str, home_dir, len);
   database_str[255] = '\0';
 
-  size_t dir_len = strlen(DB_DIR);
-  memcpy(database_str + len, DB_DIR, dir_len);
+  size_t dir_len = strlen(DATA_DIR);
+  memcpy(database_str + len, DATA_DIR, dir_len);
   database_str[255] = '\0';
 
   mkdir(database_str, 0755);

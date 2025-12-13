@@ -40,6 +40,8 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
     printf(">> Chat with: %s\n", chat_name);
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+    puts(">> Select 1 to exit");
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
 
     for (size_t i = 0; i < n_msgs; i++) {
       puts(messages[i].content);

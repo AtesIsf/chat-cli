@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 
 /*
@@ -37,3 +38,51 @@ void send_message(comms_t *comms, const char *addr) {
 void deinitialize_server(comms_t *comms) {
   assert(comms != NULL);
 }
+
+/*
+ * Reads the configs from the configs file. Return a pointer to the
+ * configs_t singleton that includes all user settings. Throws an assertion 
+ * if memory allocation fails or if there is a file I/O error.
+ * Returned pointer must be freed!
+ */
+
+configs_t *read_configs() {
+  configs_t *conf = malloc(sizeof(configs_t));
+  assert(conf != NULL);
+
+  const char *home_dir = getenv("HOME");
+  char data_str[256] = { '\0' };
+  size_t len = strlen(home_dir);
+
+  memcpy(data_str, home_dir, len);
+  data_str[255] = '\0';
+
+  size_t dir_len = strlen(DATA_DIR);
+  memcpy(data_str + len, DATA_DIR, dir_len);
+  data_str[255] = '\0';
+
+  mkdir(data_str, 0755);
+
+  memcpy(data_str + len + dir_len, CONFIG_FILE_NAME, strlen(CONFIG_FILE_NAME));
+  data_str[255] = '\0';
+
+  FILE *fp = fopen(data_str, "r");
+
+  if (fp == NULL) {
+    fp = fopen(data_str, "w");
+    conf->client_port = DEFAULT_CLIENT_PORT;
+    conf->server_port = DEFAULT_SERVER_PORT;
+    int status = fwrite(conf, sizeof(configs_t), 1, fp);
+    assert(status == 1);
+  } else {
+    int status = fread(conf, sizeof(configs_t), 1, fp);
+    assert(status == 1);
+  }
+
+  if (fp != NULL) {
+    fclose(fp);
+  }
+  fp = NULL;
+  return conf;
+}
+

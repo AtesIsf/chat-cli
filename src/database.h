@@ -4,7 +4,10 @@
 #include <stdbool.h>
 #include <sqlite3.h>
 
-#define DB_DIR ("/.chat-cli")
+#ifndef DATA_DIR
+#define DATA_DIR ("/.chat-cli")
+#endif
+
 #define DB_NAME ("/data.db")
 
 typedef struct Message {
