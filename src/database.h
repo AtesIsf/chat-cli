@@ -3,12 +3,21 @@
 
 #include <stdbool.h>
 #include <sqlite3.h>
+#include <stddef.h>
 
-#ifndef DATA_DIR
+// TODO: Randomize default values on each config generation?
+
+#define DEFAULT_SERVER_PORT (50505)
+#define DEFAULT_CLIENT_PORT (50506)
+
 #define DATA_DIR ("/.chat-cli")
-#endif
-
 #define DB_NAME ("/data.db")
+#define CONFIG_FILE_NAME ("/config.txt")
+
+typedef struct ConfigsSingleton {
+  size_t server_port;
+  size_t client_port;
+} configs_t;
 
 typedef struct Message {
   char *content;
@@ -23,5 +32,7 @@ const char **get_chats(sqlite3 *, int *);
 int get_id_of_username(sqlite3 *, const char *);
 
 msg_t *get_messages_from_chat_id(sqlite3 *, int, int *);
+
+configs_t *read_configs();
 
 #endif
