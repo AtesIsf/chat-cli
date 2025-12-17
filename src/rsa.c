@@ -21,7 +21,7 @@ bool global_primes_calculated = false;
  */
 
 void sieve_primes() {
-  bool *is_prime = malloc((MAX_SIEVE_VAL) * sizeof(bool));
+  bool *is_prime = malloc((MAX_SIEVE_VAL + 1) * sizeof(bool));
   assert(is_prime != NULL);
   memset(is_prime, 1, MAX_SIEVE_VAL + 1);
 
@@ -47,6 +47,9 @@ void sieve_primes() {
       global_primes[index++] = i;
     }
   }
+
+  free(is_prime);
+  is_prime = NULL;
   global_primes_calculated = true;
 }
 
@@ -60,10 +63,12 @@ rsa_t rsa_keygen() {
   assert(global_primes_calculated);
 
   srand(time(NULL));
+  /* Commented out to prevent unused variable warning
   size_t first_prime = global_primes[rand() % (global_n_primes + 1)];
   size_t second_prime = global_primes[rand() % (global_n_primes + 1)];
 
   size_t primes_product = first_prime * second_prime;
+  */
 
   // TODO: continue implementation
   
