@@ -17,20 +17,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define INITIAL_MAP_SIZE (32)
-#define HASH_PRIME (17)
+#define INITIAL_TABLE_SIZE (32)
+#define HASH_PRIME (7)
+#define LOAD_FACTOR (0.67)
+
+// TODO: reorder to minimize size later
 
 typedef struct UserData {
-  char public_key; // convert to RSA struct after implementing key pair
+  rsa_t keys;
   char *username;
   char *ip; // May change later
   bool tombstone;
 } userdata_t;
 
-typedef struct HashMap {
+typedef struct HashTable {
   userdata_t *map;
   size_t size;
-} hashmap_t;
+  size_t n_elements;
+} hashtable_t;
 
 /*
  * Generates the UserData hashmap. Throws an
@@ -38,14 +42,14 @@ typedef struct HashMap {
  * Call free_hashmap() afterwards to avoid memory leaks!
  */
 
-hashmap_t generate_hashmap() {
-  userdata_t *map = calloc(INITIAL_MAP_SIZE, sizeof(userdata_t));
+hashtable_t generate_hashmap() {
+  userdata_t *map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
   assert(map != NULL);
-  hashmap_t hm = (hashmap_t){ .map = map, .size = INITIAL_MAP_SIZE };
-  return hm;
+  hashtable_t ht = (hashtable_t){ .map = map, .size = INITIAL_TABLE_SIZE, .n_elements = 0 };
+  return ht;
 }
 
-void free_hashmap(hashmap_t *hm) {
+void free_hashmap(hashtable_t *hm) {
   userdata_t *map = hm->map;
   for (size_t i = 0; i < hm->size; i++) {
     if (map[i].username == NULL) {
@@ -67,22 +71,22 @@ void free_hashmap(hashmap_t *hm) {
  * assertion if any of the parameters are NULL.
  */
 
-int get_index(hashmap_t *hm, const char *username) {
-  assert(hm != NULL && username != NULL && hm->map != NULL);
+int get_index(hashtable_t *ht, const char *username) {
+  assert(ht != NULL && username != NULL && ht->map != NULL);
 
   size_t name_len = strlen(username);
   int hash_val = 0;
   for (size_t i = 0; i < name_len; i++) {
     hash_val += ((int) username[i]) * pow(HASH_PRIME, i);
   }
-  hash_val %= hm->size;
+  hash_val %= ht->size;
 
   // Case 1: does not exist
-  if (hm->map[hash_val].tombstone == false && hm->map[hash_val].username == NULL) {
+  if (ht->map[hash_val].tombstone == false && ht->map[hash_val].username == NULL) {
     return -1;
   }
   // Case 2: found
-  else if(hm->map[hash_val].tombstone == false && strcmp(username, hm->map[hash_val].username) == 0) {
+  else if(ht->map[hash_val].tombstone == false && strcmp(username, ht->map[hash_val].username) == 0) {
     return hash_val;
   }
   // Case 3: taken spot (tombstone or active object)
@@ -91,19 +95,42 @@ int get_index(hashmap_t *hm, const char *username) {
     int i = 1;
     int index = hash_val + i;
     while (index != hash_val) {
-      if (hm->map[hash_val].tombstone == false && strcmp(username, hm->map[hash_val].username) == 0) {
+      if (ht->map[hash_val].tombstone == false && strcmp(username, ht->map[hash_val].username) == 0) {
         return index;
       }
       i++;
-      index = (index + i * i) % hm->size;
+      index = (index + i * i) % ht->size;
     }
   }
 
   return -1;
 }
 
+// TODO: Resizing
+
+void resize(hashtable_t *ht) {
+
+}
+
+// TODO: Insertion
+
+void insert(hashtable_t *ht, userdata_t data) {
+  if ((ht->n_elements + 1) / (double) ht->size >= LOAD_FACTOR) {
+    resize(ht);
+  }
+}
+
+// TODO: Deletion
+
 int main() {
-  hashmap_t hm = generate_hashmap();
-  free_hashmap(&hm);
+  sieve_primes();
+  if (!global_primes_calculated) {
+    return 1;
+  }
+  hashtable_t ht = generate_hashmap();
+
+  free_hashmap(&ht);
+  free(global_primes);
+  global_primes = NULL;
   return 0;
 }
