@@ -50,7 +50,6 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
     }
     
     // TODO: Implement this after finishing message displaying
-    // Also, inputting "`" causes a bug, fix it.
     int status_code = scanf("%d", &choice);
     if (status_code != 1) {
       char temp = '\n';
