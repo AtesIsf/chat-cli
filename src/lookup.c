@@ -21,8 +21,6 @@
 #define HASH_PRIME (7)
 #define LOAD_FACTOR (0.67)
 
-// TODO: reorder to minimize size later
-
 typedef struct UserData {
   rsa_t keys;
   char *username;
@@ -85,42 +83,93 @@ int get_index(hashtable_t *ht, const char *username) {
   if (ht->map[hash_val].tombstone == false && ht->map[hash_val].username == NULL) {
     return -1;
   }
-  // Case 2: found
-  else if(ht->map[hash_val].tombstone == false && strcmp(username, ht->map[hash_val].username) == 0) {
-    return hash_val;
-  }
-  // Case 3: taken spot (tombstone or active object)
   else {
     // Quadratic probing
     int i = 1;
-    int index = hash_val + i;
-    while (index != hash_val) {
-      if (ht->map[hash_val].tombstone == false && strcmp(username, ht->map[hash_val].username) == 0) {
+    int index = hash_val;
+    do {
+      if (ht->map[index].tombstone == false && strcmp(username, ht->map[index].username) == 0) {
         return index;
       }
-      i++;
       index = (index + i * i) % ht->size;
-    }
+      i++;
+    } while (index != hash_val);
   }
 
   return -1;
 }
 
 // TODO: Resizing
+// Remember to free lazily deleted (tombstoned) elements
 
 void resize(hashtable_t *ht) {
-
+  assert(ht != NULL);
 }
 
-// TODO: Insertion
+/*
+ * Inserts the given data to the hash table. Resizes the
+ * table if necessary. Throws an assertion if the passed
+ * parameters are NULL or invalid. Returns 0 on success,
+ * 1 on failure. If the given user's username already exists,
+ * updates the existing data with the new data.
+ */
 
-void insert(hashtable_t *ht, userdata_t data) {
+int insert(hashtable_t *ht, userdata_t data) {
+  assert(ht != NULL && data.username != NULL && data.ip != NULL && data.tombstone == false);
+
+  // If new point exists, update
+  int existing_index = get_index(ht, data.username);
+  if (existing_index != -1) {
+    free(ht->map[existing_index].username);
+    free(ht->map[existing_index].ip);
+    ht->map[existing_index] = data;
+    return 0;
+  }
+
   if ((ht->n_elements + 1) / (double) ht->size >= LOAD_FACTOR) {
     resize(ht);
   }
+
+  size_t name_len = strlen(data.username);
+  int hash_val = 0;
+  for (size_t i = 0; i < name_len; i++) {
+    hash_val += ((int) data.username[i]) * pow(HASH_PRIME, i);
+  }
+  hash_val %= ht->size;
+
+  // Quadratic probing
+  int i = 1;
+  int index = hash_val;
+  do {
+    // Empty spot found
+    if (ht->map[index].tombstone == true || ht->map[index].username == NULL) {
+      free(ht->map[existing_index].username);
+      free(ht->map[existing_index].ip);
+      ht->map[index] = data;
+      return 0;
+    }
+    index = (index + i * i) % ht->size;
+    i++;
+  } while (index != hash_val);
+  return -1;
 }
 
-// TODO: Deletion
+/*
+ * Finds and *LAZILY* deletes the given user from the given hash table.
+ * Returns -1 if the given user does not exist in the hashmap.
+ * Returns 0 on success. Throws an assertion if any of the
+ * parameters are NULL.
+ */
+
+int delete_data(hashtable_t *ht, const char *username) {
+  assert(ht != NULL && username != NULL);
+  int index = get_index(ht, username);
+  if (index == -1) {
+    return -1;
+  }
+  ht->map[index].tombstone = true;
+  return 0;
+}
 
 int main() {
   sieve_primes();
