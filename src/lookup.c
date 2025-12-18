@@ -85,11 +85,11 @@ int get_index(hashtable_t *ht, const char *username) {
 
 /*
  * Resizes the given hash table's array by the compile-time
- * constant RESIZE_FACTOR. Sets size to SIZE_MAX if resizing by
- * RESIZE_FACTOR causes an overflow. Doesn't do anything if
- * the hashtable's size is already SIZE_MAX. Throws an assertion
- * if the passed parameter is NULL, if a memory allocation error
- * occurs, or if rehashing all elements fails.
+ * constant RESIZE_FACTOR. Sets size to MAX_TABLE_SIZE if resizing by
+ * RESIZE_FACTOR causes the table to have a larger length than MAX_TABLE_SIZE.
+ * Doesn't do anything if the hashtable's size is already MAX_TABLE_SIZE.
+ * Throws an assertion if the passed parameter is NULL, if a memory allocation
+ * error occurs, or if rehashing all elements fails.
  */
 
 void resize(hashtable_t *ht) {
@@ -98,12 +98,12 @@ void resize(hashtable_t *ht) {
   size_t old_size = ht->size; 
 
   // This is never going to happen, so something's wrong if it executes
-  if (ht->size == SIZE_MAX) {
+  if (ht->size == MAX_TABLE_SIZE) {
     return;
   }
   // Overflow, I expect this to never occur
-  else if (ht->size * RESIZE_FACTOR < ht->size) {
-    ht->size = SIZE_MAX;
+  else if (ht->size * RESIZE_FACTOR > MAX_TABLE_SIZE) {
+    ht->size = MAX_TABLE_SIZE;
   } else {
     ht->size *= RESIZE_FACTOR;
   }

@@ -4,6 +4,7 @@
 #include "rsa.h"
 
 #define INITIAL_TABLE_SIZE (32)
+#define MAX_TABLE_SIZE (1048576) // 2 ^ 20
 #define HASH_PRIME (7)
 #define LOAD_FACTOR (0.67)
 #define RESIZE_FACTOR (2)
