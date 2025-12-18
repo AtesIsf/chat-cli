@@ -143,8 +143,8 @@ int insert(hashtable_t *ht, userdata_t data) {
   do {
     // Empty spot found
     if (ht->map[index].tombstone == true || ht->map[index].username == NULL) {
-      free(ht->map[existing_index].username);
-      free(ht->map[existing_index].ip);
+      free(ht->map[index].username);
+      free(ht->map[index].ip);
       ht->map[index] = data;
       return 0;
     }
@@ -177,7 +177,6 @@ int main() {
     return 1;
   }
   hashtable_t ht = generate_hashmap();
-
   free_hashmap(&ht);
   free(global_primes);
   global_primes = NULL;
