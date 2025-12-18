@@ -8,31 +8,15 @@
  * Uses open addressing in the hash table.
  */
 
-#include "rsa.h"
+#include "lookup.h"
 
 #include <assert.h>
 #include <math.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define INITIAL_TABLE_SIZE (32)
-#define HASH_PRIME (7)
-#define LOAD_FACTOR (0.67)
-
-typedef struct UserData {
-  rsa_t keys;
-  char *username;
-  char *ip; // May change later
-  bool tombstone;
-} userdata_t;
-
-typedef struct HashTable {
-  userdata_t *map;
-  size_t size;
-  size_t n_elements;
-} hashtable_t;
 
 /*
  * Generates the UserData hashmap. Throws an
@@ -99,11 +83,48 @@ int get_index(hashtable_t *ht, const char *username) {
   return -1;
 }
 
-// TODO: Resizing
-// Remember to free lazily deleted (tombstoned) elements
+/*
+ * Resizes the given hash table's array by the compile-time
+ * constant RESIZE_FACTOR. Sets size to SIZE_MAX if resizing by
+ * RESIZE_FACTOR causes an overflow. Doesn't do anything if
+ * the hashtable's size is already SIZE_MAX. Throws an assertion
+ * if the passed parameter is NULL, if a memory allocation error
+ * occurs, or if rehashing all elements fails.
+ */
 
 void resize(hashtable_t *ht) {
   assert(ht != NULL);
+
+  size_t old_size = ht->size; 
+
+  // This is never going to happen, so something's wrong if it executes
+  if (ht->size == SIZE_MAX) {
+    return;
+  }
+  // Overflow, I expect this to never occur
+  else if (ht->size * RESIZE_FACTOR < ht->size) {
+    ht->size = SIZE_MAX;
+  } else {
+    ht->size *= RESIZE_FACTOR;
+  }
+
+  userdata_t *temp_map = calloc(ht->size, sizeof(userdata_t));
+  hashtable_t temp_table = { .map = temp_map, .size = ht->size, .n_elements = 0 };
+  for (size_t i = 0; i < old_size; i++) {
+    if (ht->map[i].tombstone == true) {
+      free(ht->map[i].username);
+      free(ht->map[i].ip);
+      ht->map[i].username = NULL;
+      ht->map[i].ip = NULL;
+    } else if (ht->map[i].username != NULL) {
+      int status_code = insert(&temp_table, ht->map[i]);
+      assert(status_code != -1);
+    }
+  }
+
+  free(ht->map);
+  ht->map = temp_map;
+  ht->n_elements = temp_table.n_elements;
 }
 
 /*
@@ -123,6 +144,7 @@ int insert(hashtable_t *ht, userdata_t data) {
     free(ht->map[existing_index].username);
     free(ht->map[existing_index].ip);
     ht->map[existing_index] = data;
+    ht->n_elements++;
     return 0;
   }
 
@@ -146,6 +168,7 @@ int insert(hashtable_t *ht, userdata_t data) {
       free(ht->map[index].username);
       free(ht->map[index].ip);
       ht->map[index] = data;
+      ht->n_elements++;
       return 0;
     }
     index = (index + i * i) % ht->size;
@@ -168,6 +191,7 @@ int delete_data(hashtable_t *ht, const char *username) {
     return -1;
   }
   ht->map[index].tombstone = true;
+  ht->n_elements--;
   return 0;
 }
 
