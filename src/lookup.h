@@ -3,16 +3,32 @@
 
 #include "rsa.h"
 
+#include <netinet/in.h>
+
 #define INITIAL_TABLE_SIZE (32)
 #define MAX_TABLE_SIZE (1048576) // 2 ^ 20
 #define HASH_PRIME (7)
 #define LOAD_FACTOR (0.67)
 #define RESIZE_FACTOR (2)
+#define MAX_USERNAME_LEN (32)
+
+#define DATA_DIR ("/.chat-cli")
+#define STORAGE_FILE ("/table.txt")
+
+extern char global_table_filename[256];
+
+typedef struct IPAddress {
+  sa_family_t family;
+  union {
+    struct in_addr v4;
+    struct in6_addr v6;
+  } addr;
+} ip_addr_t;
 
 typedef struct UserData {
-  rsa_t keys;
-  char *username;
-  char *ip; // May change later
+  char username[32];
+  ip_addr_t ip;
+  size_t public_key;
   bool tombstone;
 } userdata_t;
 
@@ -21,6 +37,8 @@ typedef struct HashTable {
   size_t size;
   size_t n_elements;
 } hashtable_t;
+
+void generate_table_filename();
 
 hashtable_t generate_hashmap();
 

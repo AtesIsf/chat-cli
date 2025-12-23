@@ -17,34 +17,74 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+
+char global_table_filename[256] = { '\0' };
+
+void generate_table_filename() {
+  const char *home_dir = getenv("HOME");
+  size_t len = strlen(home_dir);
+
+  memcpy(global_table_filename, home_dir, len);
+  global_table_filename[255] = '\0';
+
+  size_t dir_len = strlen(DATA_DIR);
+  memcpy(global_table_filename + len, DATA_DIR, dir_len);
+  global_table_filename[255] = '\0';
+
+  mkdir(global_table_filename, 0755);
+
+  memcpy(global_table_filename + len + dir_len, STORAGE_FILE, strlen(STORAGE_FILE));
+  global_table_filename[255] = '\0';
+}
 
 /*
  * Generates the UserData hashmap. Throws an
- * assertion if a memory allocation error occurs.
- * Call free_hashmap() afterwards to avoid memory leaks!
+ * assertion if a memory allocation error occurs or if the table
+ * file name is unitialized. Call free_hashmap() afterwards to avoid memory
+ * leaks! Uses the table in the disk if it exists. Creates the file otherwise.
  */
 
 hashtable_t generate_hashmap() {
-  userdata_t *map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
-  assert(map != NULL);
-  hashtable_t ht = (hashtable_t){ .map = map, .size = INITIAL_TABLE_SIZE, .n_elements = 0 };
+  assert(global_table_filename[0] != '\0');
+
+  FILE *file = fopen(global_table_filename, "r");
+  if (file == NULL) {
+    file = fopen(global_table_filename, "w");
+    if (file != NULL) {
+      fclose(file);
+    }
+    userdata_t *map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
+    assert(map != NULL);
+    return (hashtable_t){ .map = map, .size = INITIAL_TABLE_SIZE, .n_elements = 0 };
+  }
+
+  hashtable_t ht;
+  size_t n_users = 0;
+  fread(&n_users, sizeof(size_t), 1, file);
+
+  userdata_t *map;
+  if (n_users != 0) {
+    map = calloc(n_users, sizeof(userdata_t));
+    assert(map != NULL);
+    fread(map, sizeof(userdata_t), n_users, file);
+    ht.size = n_users;
+    ht.n_elements = n_users;
+  } else {
+    map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
+    assert(map != NULL);
+    ht.size = INITIAL_TABLE_SIZE;
+    ht.n_elements = 0;
+  }
+  
+  ht.map = map;
+  fclose(file);
   return ht;
 }
 
 void free_hashmap(hashtable_t *hm) {
-  userdata_t *map = hm->map;
-  for (size_t i = 0; i < hm->size; i++) {
-    if (map[i].username == NULL) {
-      continue;
-    }
-    free(map[i].username);
-    map[i].username = NULL;
-    // TODO: change later if it changes in the struct
-    free(map[i].ip);
-    map[i].ip = NULL;
-  }
-  free(map);
-  map = NULL;
+  free(hm->map);
+  hm->map = NULL;
 }
 
 /*
@@ -64,7 +104,7 @@ int get_index(hashtable_t *ht, const char *username) {
   hash_val %= ht->size;
 
   // Case 1: does not exist
-  if (ht->map[hash_val].tombstone == false && ht->map[hash_val].username == NULL) {
+  if (ht->map[hash_val].tombstone == false && ht->map[hash_val].username[0] == '\0') {
     return -1;
   }
   else {
@@ -111,12 +151,7 @@ void resize(hashtable_t *ht) {
   userdata_t *temp_map = calloc(ht->size, sizeof(userdata_t));
   hashtable_t temp_table = { .map = temp_map, .size = ht->size, .n_elements = 0 };
   for (size_t i = 0; i < old_size; i++) {
-    if (ht->map[i].tombstone == true) {
-      free(ht->map[i].username);
-      free(ht->map[i].ip);
-      ht->map[i].username = NULL;
-      ht->map[i].ip = NULL;
-    } else if (ht->map[i].username != NULL) {
+    if (ht->map[i].username[0] != '\0') {
       int status_code = insert(&temp_table, ht->map[i]);
       assert(status_code != -1);
     }
@@ -136,13 +171,11 @@ void resize(hashtable_t *ht) {
  */
 
 int insert(hashtable_t *ht, userdata_t data) {
-  assert(ht != NULL && data.username != NULL && data.ip != NULL && data.tombstone == false);
+  assert(ht != NULL && data.username != NULL && data.tombstone == false);
 
   // If new point exists, update
   int existing_index = get_index(ht, data.username);
   if (existing_index != -1) {
-    free(ht->map[existing_index].username);
-    free(ht->map[existing_index].ip);
     ht->map[existing_index] = data;
     ht->n_elements++;
     return 0;
@@ -164,9 +197,7 @@ int insert(hashtable_t *ht, userdata_t data) {
   int index = hash_val;
   do {
     // Empty spot found
-    if (ht->map[index].tombstone == true || ht->map[index].username == NULL) {
-      free(ht->map[index].username);
-      free(ht->map[index].ip);
+    if (ht->map[index].tombstone == true || ht->map[index].username[0] == '\0') {
       ht->map[index] = data;
       ht->n_elements++;
       return 0;
@@ -196,10 +227,15 @@ int delete_data(hashtable_t *ht, const char *username) {
 }
 
 int main() {
+  generate_table_filename();
+  if (global_table_filename[0] == '\0') {
+    return 1;
+  }
   sieve_primes();
   if (!global_primes_calculated) {
     return 1;
   }
+
   hashtable_t ht = generate_hashmap();
   free_hashmap(&ht);
   free(global_primes);
