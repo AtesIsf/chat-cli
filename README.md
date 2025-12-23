@@ -1,7 +1,7 @@
 # Chat-Cli
 
 `chat-cli` is a **learning-focused, decentralized command-line chat application written in C**.  
-The goal of this project is to **better understand the principles of**: networking, cryptography, systems programming, and system design.
+The goal of this project is to **better understand the principles of**: networking, systems programming, and system design.
 
 ---
 
@@ -12,7 +12,6 @@ The main objectives of this project are:
 - Build a peer-to-peer chat system in **C**
 - Understand **networking**
 - Explore **decentralized communication models**
-- Implement **public-key cryptography for learning purposes**
 - Design a simple **federated lookup / rendezvous mechanism**
 - Gain hands-on experience with **systems programming**
 
@@ -34,13 +33,7 @@ At a conceptual level, the system consists of:
 - Once peers discover each other, messages are exchanged **directly**
 - No central server is involved in message delivery
 
-### 3. Identity & Cryptography
-- Cryptography is implemented manually **for educational purposes**
-- Asymmetric cryptography is used for:
-  - Authentication
-  - Key exchange
-
-### 4. Federated Lookup (Rendezvous Server)
+### 3. Federated Lookup (Rendezvous Server)
 - A small, simple server assists with:
   - Mapping user identities to network addresses
   - Helping peers find each other
