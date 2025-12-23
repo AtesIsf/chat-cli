@@ -2,6 +2,7 @@
 #define CHAT_LOOKUP_H
 
 #include <netinet/in.h>
+#include <stdbool.h>
 
 #define INITIAL_TABLE_SIZE (32)
 #define MAX_TABLE_SIZE (1048576) // 2 ^ 20

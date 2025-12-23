@@ -269,16 +269,10 @@ int main() {
   if (global_table_filename[0] == '\0') {
     return 1;
   }
-  sieve_primes();
-  if (!global_primes_calculated) {
-    return 1;
-  }
 
   hashtable_t ht = generate_hashmap();
   write_table(&ht);
 
   free_hashmap(&ht);
-  free(global_primes);
-  global_primes = NULL;
   return 0;
 }
