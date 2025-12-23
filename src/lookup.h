@@ -1,8 +1,6 @@
 #ifndef CHAT_LOOKUP_H
 #define CHAT_LOOKUP_H
 
-#include "rsa.h"
-
 #include <netinet/in.h>
 
 #define INITIAL_TABLE_SIZE (32)
