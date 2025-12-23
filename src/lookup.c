@@ -39,20 +39,51 @@ void generate_table_filename() {
 }
 
 /*
+ * Writes the given hash table's data to the disk.
+ * Creates the file if it doesn't exist. Overwrites the existing data.
+ * Throws an assertion if the table file cannot be opened or if a write
+ * error occurs.
+ */
+
+void write_table(hashtable_t *ht) {
+  if (global_table_filename[0] == '\0') {
+    generate_table_filename();
+  }
+  FILE *file = fopen(global_table_filename, "w");
+  assert(file != NULL);
+
+  fwrite(&ht->n_elements, sizeof(size_t), 1, file);
+  for (size_t i = 0; i < ht->size; i++) {
+    if (ht->map[i].tombstone == false && ht->map[i].username[0] != '\0') {
+      size_t status_code = fwrite(&ht->map[i], sizeof(userdata_t), 1, file);
+      assert(status_code == 1);
+    }
+  }
+
+  fclose(file);
+  file = NULL;
+}
+
+/*
  * Generates the UserData hashmap. Throws an
- * assertion if a memory allocation error occurs or if the table
- * file name is unitialized. Call free_hashmap() afterwards to avoid memory
- * leaks! Uses the table in the disk if it exists. Creates the file otherwise.
+ * assertion if a memory allocation error occurs, if the table
+ * file cannot be opened, or if a read error occurs. Call free_hashmap()
+ * afterwards to avoid memory leaks! Uses the table in the disk if it exists.
+ * Creates the file otherwise.
  */
 
 hashtable_t generate_hashmap() {
-  assert(global_table_filename[0] != '\0');
+  if (global_table_filename[0] == '\0') {
+    generate_table_filename();
+  }
 
   FILE *file = fopen(global_table_filename, "r");
   if (file == NULL) {
     file = fopen(global_table_filename, "w");
+    assert(file != NULL);
     if (file != NULL) {
       fclose(file);
+      file = NULL;
     }
     userdata_t *map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
     assert(map != NULL);
@@ -61,24 +92,32 @@ hashtable_t generate_hashmap() {
 
   hashtable_t ht;
   size_t n_users = 0;
-  fread(&n_users, sizeof(size_t), 1, file);
+  size_t status_code = fread(&n_users, sizeof(size_t), 1, file);
+  assert(status_code == 1);
 
   userdata_t *map;
   if (n_users != 0) {
     map = calloc(n_users, sizeof(userdata_t));
     assert(map != NULL);
-    fread(map, sizeof(userdata_t), n_users, file);
     ht.size = n_users;
     ht.n_elements = n_users;
+    ht.map = map;
+    for (size_t i = 0; i < n_users; i++) {
+      userdata_t temp;
+      status_code = fread(&temp, sizeof(userdata_t), 1, file);
+      assert(status_code == 1);
+      insert(&ht, temp);
+    }
   } else {
     map = calloc(INITIAL_TABLE_SIZE, sizeof(userdata_t));
     assert(map != NULL);
+    ht.map = map;
     ht.size = INITIAL_TABLE_SIZE;
     ht.n_elements = 0;
   }
   
-  ht.map = map;
   fclose(file);
+  file = NULL;
   return ht;
 }
 
@@ -151,7 +190,7 @@ void resize(hashtable_t *ht) {
   userdata_t *temp_map = calloc(ht->size, sizeof(userdata_t));
   hashtable_t temp_table = { .map = temp_map, .size = ht->size, .n_elements = 0 };
   for (size_t i = 0; i < old_size; i++) {
-    if (ht->map[i].username[0] != '\0') {
+    if (ht->map[i].tombstone == false && ht->map[i].username[0] != '\0') {
       int status_code = insert(&temp_table, ht->map[i]);
       assert(status_code != -1);
     }
@@ -177,7 +216,6 @@ int insert(hashtable_t *ht, userdata_t data) {
   int existing_index = get_index(ht, data.username);
   if (existing_index != -1) {
     ht->map[existing_index] = data;
-    ht->n_elements++;
     return 0;
   }
 
@@ -237,6 +275,8 @@ int main() {
   }
 
   hashtable_t ht = generate_hashmap();
+  write_table(&ht);
+
   free_hashmap(&ht);
   free(global_primes);
   global_primes = NULL;

@@ -28,7 +28,7 @@ typedef struct IPAddress {
 typedef struct UserData {
   char username[32];
   ip_addr_t ip;
-  size_t public_key;
+  size_t public_key; // Change to byte array later
   bool tombstone;
 } userdata_t;
 
@@ -39,6 +39,8 @@ typedef struct HashTable {
 } hashtable_t;
 
 void generate_table_filename();
+
+void write_table(hashtable_t *);
 
 hashtable_t generate_hashmap();
 
