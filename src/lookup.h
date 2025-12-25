@@ -12,9 +12,11 @@
 #define RESIZE_FACTOR (2)
 #define MAX_USERNAME_LEN (32)
 #define PORT (56732)
+
 #define METHOD_UPDATE ('U')
 #define METHOD_FETCH ('F')
-#define ERR_RESPONSE ("ERR")
+#define ERR_RESPONSE ("E\0")
+#define OK_RESPONSE ("K\0")
 
 #define STORAGE_FILE ("/table.txt")
 

@@ -282,12 +282,18 @@ int delete_data(hashtable_t *ht, const char *username) {
  * given username doesn't exist in the hash table.
  * Throws an assertion if any of the parameters are NULL or
  * if a heap allocation error occurs. Returns a heap-allocated response string. 
+ * Expected format: "method char|username"
+ * Returned format: "4 or 6|ip address"
  */
 
 char *handle_fetch(const char *msg, hashtable_t *ht) {
   char buf[MAX_USERNAME_LEN] = { '\0' };
-  sscanf(msg, "%*c|%31[^\n]", buf);
+  int status_code = sscanf(msg, "%*c|%31[^\n]", buf);
   buf[31] = '\0';
+  // The discarded char is not counted
+  if (status_code != 1) {
+    return NULL;
+  }
   int index = get_index(ht, buf);
   if (index == -1) {
     return NULL;
@@ -312,9 +318,10 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
   char *ip_str = calloc(sizeof(char), len);
   assert(ip_str != NULL);
   inet_ntop(ip.family, src, ip_str, len);
-  char *response = malloc(sizeof(char) * len + 3);
+  char *response = malloc(sizeof(char) * len + 4);
   assert(response != NULL);
   sprintf(response, "%c|%s\n", type_char, ip_str);
+  response[len + 4] = '\0';
   free(ip_str);
 
   return response;
@@ -325,11 +332,31 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
  * string.
+ * Expected format: "4 or 6|username|ip address"
+ * Returned format: "E (error) or K (ok)"
  */
 
 char *handle_update(const char *msg, hashtable_t *ht) {
-  // TODO
-  return NULL;
+  userdata_t data = { 0 };
+  data.tombstone = false;
+  char ip_type = '\0';
+  char ip_addr[INET6_ADDRSTRLEN + 1] = { '\0' };
+
+  int status_code = sscanf(msg, "%c|%31[^|]|%46[\n]", &ip_type, data.username, ip_addr);
+  if (status_code != 3) {
+    return strdup(ERR_RESPONSE);
+  }
+  if (ip_type == '4') {
+    data.ip.family = AF_INET;
+    inet_net_pton(data.ip.family, ip_addr, &data.ip.addr.v4, INET_ADDRSTRLEN);
+  } else if (ip_type == '6') {
+    data.ip.family = AF_INET6;
+    inet_net_pton(data.ip.family, ip_addr, &data.ip.addr.v6, INET6_ADDRSTRLEN);
+  } else {
+    return strdup(ERR_RESPONSE);
+  }
+  int result = insert(ht, data);
+  return result == 0 ? strdup(OK_RESPONSE) : strdup(ERR_RESPONSE);
 }
 
 /*
