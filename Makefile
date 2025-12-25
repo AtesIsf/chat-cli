@@ -19,7 +19,12 @@ lookup: $(SRC_DIR)/lookup.c $(LOOKUP_OBJ)
 	$(CC) -o $@ $^ $(LOOKUP_FLAGS)
 
 keygen:
+	mkdir ~/.chat-cli
 	yes AI | openssl req -x509 -newkey rsa:4096 -keyout ~/.chat-cli/key.pem -out ~/.chat-cli/cert.pem -days 36500 -nodes
+
+lookup-keygen:
+	mkdir ~/.chat-cli-lookup
+	yes AI | openssl req -x509 -newkey rsa:4096 -keyout ~/.chat-cli-lookup/key.pem -out ~/.chat-cli-lookup/cert.pem -days 36500 -nodes
 
 clean:
 	rm -f ./bin/*

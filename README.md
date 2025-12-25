@@ -75,7 +75,7 @@ make
 
 > (Optional, not intended for client use) Make and run the lookup server
 ```sh
-make keygen
+make lookup-keygen
 make lookup
 ./lookup
 ```

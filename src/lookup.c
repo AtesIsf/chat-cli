@@ -12,6 +12,9 @@
 #include "ssl.h"
 
 #include <assert.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <signal.h>
 #include <math.h>
 #include <openssl/ssl.h>
 #include <stdbool.h>
@@ -19,9 +22,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 char global_table_filename[256] = { '\0' };
+
+volatile bool global_terminate_program = false;
+
+void terminate_signal(int n) {
+  global_terminate_program = true;
+}
 
 void generate_table_filename() {
   const char *home_dir = getenv("HOME");
@@ -264,6 +275,159 @@ int delete_data(hashtable_t *ht, const char *username) {
   ht->map[index].tombstone = true;
   ht->n_elements--;
   return 0;
+}
+
+/*
+ * Handles the given fetch request. Returns NULL if the
+ * given username doesn't exist in the hash table.
+ * Throws an assertion if any of the parameters are NULL or
+ * if a heap allocation error occurs. Returns a heap-allocated response string. 
+ */
+
+char *handle_fetch(const char *msg, hashtable_t *ht) {
+  char buf[MAX_USERNAME_LEN] = { '\0' };
+  sscanf(msg, "%*c|%31[^\n]", buf);
+  buf[31] = '\0';
+  int index = get_index(ht, buf);
+  if (index == -1) {
+    return NULL;
+  }
+  ip_addr_t ip = ht->map[index].ip;
+
+  const void *src = NULL;
+  size_t len = 0;
+  char type_char = 'X';
+  if (ip.family == AF_INET) {
+    src = &ip.addr.v4;
+    len = INET_ADDRSTRLEN;
+    type_char = '4';
+  } else if (ip.family == AF_INET6) {
+    src = &ip.addr.v6;
+    len = INET6_ADDRSTRLEN;
+    type_char = '6';
+  } else {
+    return NULL;
+  }
+  
+  char *ip_str = calloc(sizeof(char), len);
+  assert(ip_str != NULL);
+  inet_ntop(ip.family, src, ip_str, len);
+  char *response = malloc(sizeof(char) * len + 3);
+  assert(response != NULL);
+  sprintf(response, "%c|%s\n", type_char, ip_str);
+  free(ip_str);
+
+  return response;
+}
+
+/*
+ * Handles an update request (record new user or update existing).
+ * Throws an assertion if any of the parameters are NULL or if a
+ * heap allocation error occurs. Returns a heap-allocated response
+ * string.
+ */
+
+char *handle_update(const char *msg, hashtable_t *ht) {
+  // TODO
+  return NULL;
+}
+
+/*
+ * Initializes an input using given SSL_CTX pointer and
+ * routes the received request to the relevant handler.
+ * Throws an assertion if any of the parameters are NULL.
+ */
+
+void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
+  assert(ctx != NULL && ht != NULL);
+  signal(SIGINT, terminate_signal);
+
+  int endpoint = socket(AF_INET6, SOCK_STREAM, 0);
+  if (endpoint == 0) {
+    fprintf(stderr, "[ERROR] Failed initializing endpoint socket (%d)\n", errno);
+    return;
+  }
+
+  int opt = 1;
+  if (setsockopt(endpoint, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) != 0) {
+    fprintf(stderr, "[ERROR] setsockopt() failed (%d)\n", errno);
+    return;
+  }
+
+  struct sockaddr_in6 addr = { 0 };
+  int addr_size = sizeof(addr);
+  addr.sin6_family = AF_INET6;
+  addr.sin6_addr = in6addr_any;
+  addr.sin6_port = htons(PORT);
+
+  if (bind(endpoint, (struct sockaddr *) &addr, (socklen_t) addr_size) < 0) {
+    fprintf(stderr, "[ERROR] bind() failed (%d)\n", errno);
+    return;
+  }
+
+  if (listen(endpoint, 10) < 0) {
+    fprintf(stderr, "[ERROR] listen() failed (%d)\n", errno);
+    return;
+  }
+  printf("[INFO] Listening on port %d...\n", PORT);
+
+
+  while (!global_terminate_program) {
+    int handler_fd = accept(endpoint, (struct sockaddr *) &addr, (socklen_t *) &addr_size);
+    if (handler_fd < 0) {
+      continue;
+    }
+
+    SSL *ssl = SSL_new(ctx);
+    if (SSL_set_fd(ssl, handler_fd) != 1) {
+      close(handler_fd);
+      SSL_shutdown(ssl);
+      SSL_free(ssl);
+      continue;
+    }
+    if (SSL_accept(ssl) <= 0) {
+      close(handler_fd);
+      SSL_shutdown(ssl);
+      SSL_free(ssl);
+      continue;
+    }
+
+    char buf[1024] = { '\0' };
+    int bytes_read = SSL_read(ssl, buf, sizeof(buf) - 1);
+    buf[bytes_read] = '\0';
+    if (bytes_read == 0) {
+      close(handler_fd);
+      SSL_shutdown(ssl);
+      SSL_free(ssl);
+      continue;
+    }
+    char method = '\0';
+    int status_code = sscanf(buf, "%c", &method);
+    if (status_code != 0) {
+      close(handler_fd);
+      SSL_shutdown(ssl);
+      SSL_free(ssl);
+      continue;
+    }
+    char *response = NULL;
+    if (method == METHOD_UPDATE) {
+      response = handle_update(buf, ht);
+    } else if (method == METHOD_FETCH) {
+      response = handle_fetch(buf, ht);
+    }
+    
+    if (response != NULL) {
+      SSL_write(ssl, response, strlen(response));
+      free(response);
+      response = NULL;
+    } else {
+      SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
+    }
+    close(handler_fd);
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+  }
+  close(endpoint);
 }
 
 int main() {
