@@ -5,7 +5,7 @@
 #include <openssl/crypto.h>
 #include <stdbool.h>
 
-#define INITIAL_TABLE_SIZE (32)
+#define INITIAL_TABLE_SIZE (16)
 #define MAX_TABLE_SIZE (1048576) // 2 ^ 20
 #define HASH_PRIME (7)
 #define LOAD_FACTOR (0.67)
@@ -45,6 +45,8 @@ typedef struct HashTable {
 } hashtable_t;
 
 void terminate_signal(int);
+
+void print_table(const hashtable_t *);
 
 void generate_table_filename();
 

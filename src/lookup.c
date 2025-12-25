@@ -34,6 +34,41 @@ void terminate_signal(int n) {
   global_terminate_program = true;
 }
 
+/*
+ * Prints the current state of the hashtable.
+ * Throws an assertion if the given hashtable pointer
+ * is NULL.
+ */
+
+void print_table(const hashtable_t *ht) {
+  assert(ht != NULL);
+  puts("[Info] Printing the current hash table...");
+  puts("------------------------");
+  printf("> Table Size: %lu\n", ht->size);
+  printf("> Number of Entries: %lu\n", ht->n_elements);
+  printf("> Load factor: %lf\n", ht->n_elements / (double) ht->size);
+  puts("------------------------");
+  for (size_t i = 0; i < ht->size; i++) {
+    if (ht->map[i].tombstone || ht->map[i].username[0] == '\0') {
+      printf("Index %lu: --\n", i);
+    } else {
+      char buf[INET6_ADDRSTRLEN + 1] = { '\0' };
+      ip_addr_t *ip = &ht->map[i].ip;
+      if (ip->family == AF_INET) {
+        inet_ntop(ip->family, &ip->addr.v4, buf, INET_ADDRSTRLEN);
+      } else {
+        inet_ntop(ip->family, &ip->addr.v6, buf, INET6_ADDRSTRLEN);
+      }
+      printf("Index %lu: \"%s\" -- \"%s\"\n", i, ht->map[i].username, buf);
+    }
+  }
+}
+
+/*
+ * Generates and populates the global table filename.
+ * Must be called only once in the program.
+ */
+
 void generate_table_filename() {
   const char *home_dir = getenv("HOME");
   size_t len = strlen(home_dir);
@@ -489,6 +524,7 @@ int main() {
 
   puts("\n[INFO] Saving the table to disk...");
   write_table(&ht);
+  print_table(&ht);
 
   puts("[INFO] Shutting down...");
   SSL_CTX_free(ctx);
