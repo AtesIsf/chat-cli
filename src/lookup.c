@@ -348,10 +348,12 @@ char *handle_update(const char *msg, hashtable_t *ht) {
   }
   if (ip_type == '4') {
     data.ip.family = AF_INET;
-    inet_net_pton(data.ip.family, ip_addr, &data.ip.addr.v4, INET_ADDRSTRLEN);
+    ip_addr[INET_ADDRSTRLEN] = '\0';
+    inet_pton(data.ip.family, ip_addr, &data.ip.addr.v4);
   } else if (ip_type == '6') {
     data.ip.family = AF_INET6;
-    inet_net_pton(data.ip.family, ip_addr, &data.ip.addr.v6, INET6_ADDRSTRLEN);
+    ip_addr[INET6_ADDRSTRLEN] = '\0';
+    inet_pton(data.ip.family, ip_addr, &data.ip.addr.v6);
   } else {
     return strdup(ERR_RESPONSE);
   }
@@ -469,6 +471,9 @@ int main() {
   }
 
   hashtable_t ht = generate_hashmap();
+
+  endpoint_manager(ctx, &ht);
+
   write_table(&ht);
 
   SSL_CTX_free(ctx);
