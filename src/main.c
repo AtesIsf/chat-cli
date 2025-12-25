@@ -1,6 +1,6 @@
 #include "cli.h"
 #include "database.h"
-#include "server.h"
+#include "ssl.h"
 
 #include <openssl/ssl.h>
 #include <sqlite3.h>

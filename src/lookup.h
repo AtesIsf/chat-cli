@@ -11,7 +11,6 @@
 #define RESIZE_FACTOR (2)
 #define MAX_USERNAME_LEN (32)
 
-#define DATA_DIR ("/.chat-cli")
 #define STORAGE_FILE ("/table.txt")
 
 extern char global_table_filename[256];
@@ -27,7 +26,6 @@ typedef struct IPAddress {
 typedef struct UserData {
   char username[32];
   ip_addr_t ip;
-  size_t public_key; // Change to byte array later
   bool tombstone;
 } userdata_t;
 

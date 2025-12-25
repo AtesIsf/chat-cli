@@ -9,9 +9,11 @@
  */
 
 #include "lookup.h"
+#include "ssl.h"
 
 #include <assert.h>
 #include <math.h>
+#include <openssl/ssl.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -266,6 +268,11 @@ int delete_data(hashtable_t *ht, const char *username) {
 
 int main() {
   generate_table_filename();
+  get_cert_dirs();
+  SSL_CTX *ctx = init_openssl();
+  if (ctx == NULL) {
+    return 1;
+  }
   if (global_table_filename[0] == '\0') {
     return 1;
   }
@@ -273,6 +280,7 @@ int main() {
   hashtable_t ht = generate_hashmap();
   write_table(&ht);
 
+  SSL_CTX_free(ctx);
   free_hashmap(&ht);
   return 0;
 }
