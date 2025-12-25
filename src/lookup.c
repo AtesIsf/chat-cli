@@ -288,7 +288,7 @@ int delete_data(hashtable_t *ht, const char *username) {
 
 char *handle_fetch(const char *msg, hashtable_t *ht) {
   char buf[MAX_USERNAME_LEN] = { '\0' };
-  int status_code = sscanf(msg, "%*c|%31[^\n]", buf);
+  int status_code = sscanf(msg, "%*c|%31s", buf);
   buf[31] = '\0';
   // The discarded char is not counted
   if (status_code != 1) {
@@ -332,8 +332,8 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
  * string.
- * Expected format: "4 or 6|username|ip address"
- * Returned format: "E (error) or K (ok)"
+ * Expected format: "U|4 or 6|username|ip address"
+ * Returned format: "K (ok)" or NULL on failure
  */
 
 char *handle_update(const char *msg, hashtable_t *ht) {
@@ -342,9 +342,9 @@ char *handle_update(const char *msg, hashtable_t *ht) {
   char ip_type = '\0';
   char ip_addr[INET6_ADDRSTRLEN + 1] = { '\0' };
 
-  int status_code = sscanf(msg, "%c|%31[^|]|%46[\n]", &ip_type, data.username, ip_addr);
+  int status_code = sscanf(msg, "%*c|%c|%31[^|]|%46s", &ip_type, data.username, ip_addr);
   if (status_code != 3) {
-    return strdup(ERR_RESPONSE);
+    return NULL;
   }
   if (ip_type == '4') {
     data.ip.family = AF_INET;
@@ -355,10 +355,10 @@ char *handle_update(const char *msg, hashtable_t *ht) {
     ip_addr[INET6_ADDRSTRLEN] = '\0';
     inet_pton(data.ip.family, ip_addr, &data.ip.addr.v6);
   } else {
-    return strdup(ERR_RESPONSE);
+    return NULL;
   }
   int result = insert(ht, data);
-  return result == 0 ? strdup(OK_RESPONSE) : strdup(ERR_RESPONSE);
+  return result == 0 ? strdup(OK_RESPONSE) : NULL;
 }
 
 /*
@@ -409,35 +409,46 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
 
     SSL *ssl = SSL_new(ctx);
     if (SSL_set_fd(ssl, handler_fd) != 1) {
-      close(handler_fd);
       SSL_shutdown(ssl);
+      close(handler_fd);
       SSL_free(ssl);
       continue;
     }
     if (SSL_accept(ssl) <= 0) {
-      close(handler_fd);
       SSL_shutdown(ssl);
+      close(handler_fd);
       SSL_free(ssl);
       continue;
     }
 
     char buf[1024] = { '\0' };
     int bytes_read = SSL_read(ssl, buf, sizeof(buf) - 1);
-    buf[bytes_read] = '\0';
+    buf[1023] = '\0';
+    printf("[INFO] %d bytes received, request: %s\n", bytes_read, buf);
+
+    if (bytes_read != 0 && (buf[bytes_read - 1] == '\r'
+                        || buf[bytes_read - 1] == '\n')) {
+      buf[bytes_read - 1] = '\0';
+      bytes_read--;
+    }
+
     if (bytes_read == 0) {
-      close(handler_fd);
       SSL_shutdown(ssl);
+      close(handler_fd);
       SSL_free(ssl);
       continue;
     }
+
     char method = '\0';
     int status_code = sscanf(buf, "%c", &method);
-    if (status_code != 0) {
-      close(handler_fd);
+    if (status_code != 1) {
       SSL_shutdown(ssl);
+      close(handler_fd);
       SSL_free(ssl);
       continue;
     }
+
+    printf("[INFO] Accepted request: %s\n", buf);
     char *response = NULL;
     if (method == METHOD_UPDATE) {
       response = handle_update(buf, ht);
@@ -446,14 +457,16 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
     }
     
     if (response != NULL) {
+      printf("[INFO] Sent reply: %s\n", response);
       SSL_write(ssl, response, strlen(response));
       free(response);
       response = NULL;
     } else {
+      printf("[INFO] Sent reply: %s\n", ERR_RESPONSE);
       SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
     }
-    close(handler_fd);
     SSL_shutdown(ssl);
+    close(handler_fd);
     SSL_free(ssl);
   }
   close(endpoint);
@@ -474,8 +487,10 @@ int main() {
 
   endpoint_manager(ctx, &ht);
 
+  puts("\n[INFO] Saving the table to disk...");
   write_table(&ht);
 
+  puts("[INFO] Shutting down...");
   SSL_CTX_free(ctx);
   free_hashmap(&ht);
   return 0;
