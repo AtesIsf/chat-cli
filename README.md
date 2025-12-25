@@ -68,12 +68,14 @@ cd chat-cli/
 
 > Make and run the client
 ```sh
+make keygen
 make
 ./chat-cli
 ```
 
 > (Optional, not intended for client use) Make and run the lookup server
 ```sh
+make keygen
 make lookup
 ./lookup
 ```
