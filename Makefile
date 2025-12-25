@@ -1,10 +1,10 @@
 CC = gcc
-CFLAGS = -O2 -std=c23 -Wall -Werror -lsqlite3
+CFLAGS = -O2 -std=c23 -Wall -Werror -lsqlite3 -lssl -lcrypto
 BIN_DIR = ./bin
 SRC_DIR = ./src
 OBJ = $(BIN_DIR)/cli.o $(BIN_DIR)/server.o $(BIN_DIR)/database.o
 
-LOOKUP_FLAGS = -O2 -std=c23 -Wall -Werror -lm
+LOOKUP_FLAGS = -O2 -std=c23 -Wall -Werror -lm -lssl -lcrypto
 
 $(BIN_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) -c -o $@ $< $(CFLAGS)
@@ -16,6 +16,9 @@ chat-cli: $(SRC_DIR)/main.c $(OBJ)
 
 lookup: $(SRC_DIR)/lookup.c
 	$(CC) -o $@ $^ $(LOOKUP_FLAGS)
+
+keygen:
+	yes AI | openssl req -x509 -newkey rsa:4096 -keyout ~/.chat-cli/key.pem -out ~/.chat-cli/cert.pem -days 36500 -nodes
 
 clean:
 	rm -f ./bin/*

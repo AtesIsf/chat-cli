@@ -55,6 +55,11 @@ This model reflects how many real-world systems balance decentralization with pr
 ## 🔨 Build & Run
 ⚠️ Meant for POSIX-compliant operating systems, currently only tested on Linux. 
 
+> Dependencies:
+```
+sqlite3 openssl
+```
+
 > Clone the project
 ```sh
 git clone https://github.com/AtesIsf/chat-cli
