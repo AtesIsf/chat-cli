@@ -1,6 +1,8 @@
 #ifndef CHAT_LOOKUP_H
 #define CHAT_LOOKUP_H
 
+#include "shared_protocol.h"
+
 #include <netinet/in.h>
 #include <openssl/crypto.h>
 #include <stdbool.h>
@@ -13,24 +15,11 @@
 #define MAX_USERNAME_LEN (32)
 #define PORT (56732)
 
-#define METHOD_UPDATE ('U')
-#define METHOD_FETCH ('F')
-#define ERR_RESPONSE ("E\0")
-#define OK_RESPONSE ("K\0")
-
 #define STORAGE_FILE ("/table.txt")
 
 extern char global_table_filename[256];
 
 extern volatile bool global_terminate_program;
-
-typedef struct IPAddress {
-  sa_family_t family;
-  union {
-    struct in_addr v4;
-    struct in6_addr v6;
-  } addr;
-} ip_addr_t;
 
 typedef struct UserData {
   char username[32];
