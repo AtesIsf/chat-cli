@@ -68,7 +68,7 @@ int delete_data(hashtable_t *, const char *);
 
 char *handle_fetch(const char *, hashtable_t *);
 
-char *handle_update(const char *, hashtable_t *, unsigned char *);
+char *handle_update(const char *, hashtable_t *);
 
 void endpoint_manager(SSL_CTX *, hashtable_t *);
 

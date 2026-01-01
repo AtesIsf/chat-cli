@@ -374,8 +374,8 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Returned format: "K (ok)" or NULL on failure
  */
 
-char *handle_update(const char *msg, hashtable_t *ht, unsigned char *fingerprint) {
-  assert(msg != NULL && ht != NULL && fingerprint != NULL);
+char *handle_update(const char *msg, hashtable_t *ht) {
+  assert(msg != NULL && ht != NULL);
 
   userdata_t data = { 0 };
   data.tombstone = false;
@@ -396,16 +396,6 @@ char *handle_update(const char *msg, hashtable_t *ht, unsigned char *fingerprint
     inet_pton(data.ip.family, ip_addr, &data.ip.addr.v6);
   } else {
     return NULL;
-  }
-
-  // Checks to see whether sent & stored fingerprints match
-  int index = get_index(ht, data.username);
-  if (index != -1) {
-    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-      if (ht->map[index].fingerprint[i] != fingerprint[i]) {
-        return NULL;
-      }
-    }
   }
 
   int result = insert(ht, data);
@@ -500,40 +490,9 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
     }
 
     printf("[INFO] Accepted request: %s\n", buf);
-
-    X509 *certificate = SSL_get1_peer_certificate(ssl);
-    if (certificate == NULL) {
-      printf("[ERROR] Could not get peer certificate, will not process request.\n");
-      method = '\0';
-    }
-
-    EVP_PKEY *public_key = NULL;
-    if (certificate != NULL) {
-      public_key = X509_get_pubkey(certificate);
-    }
-    if (public_key == NULL) {
-      printf("[ERROR] Could not get peer public key, will not process request.\n");
-      method = '\0';
-    }
-
-    unsigned char *der = NULL;
-    int length = 0;
-    if (public_key != NULL) {
-      length =i2d_PUBKEY(public_key, &der);
-    }
-    if (length <= 0) {
-      printf("[ERROR] Could not process public key, will not process request.\n");
-      method = '\0';
-    }
-
-    unsigned char fingerprint[SHA256_DIGEST_LENGTH] = { '\0' };
-    if (der != NULL) {
-      SHA256(der, length, fingerprint);
-    }
-
     char *response = NULL;
     if (method == METHOD_UPDATE) {
-      response = handle_update(buf, ht, fingerprint);
+      response = handle_update(buf, ht);
     } else if (method == METHOD_FETCH) {
       response = handle_fetch(buf, ht);
     }
@@ -548,14 +507,6 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
       SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
     }
 
-    if (certificate != NULL) {
-      X509_free(certificate);
-    }
-    certificate = NULL;
-    if (public_key != NULL) {
-      EVP_PKEY_free(public_key);
-    }
-    public_key = NULL;
     SSL_shutdown(ssl);
     close(handler_fd);
     SSL_free(ssl);
