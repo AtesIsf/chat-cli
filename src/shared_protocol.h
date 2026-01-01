@@ -9,6 +9,8 @@
 #define ERR_RESPONSE ("E\0")
 #define OK_RESPONSE ("K\0")
 
+#define LOOKUP_PORT (56732)
+
 typedef struct IPAddress {
   sa_family_t family;
   union {

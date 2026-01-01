@@ -9,6 +9,7 @@
  */
 
 #include "lookup.h"
+#include "shared_protocol.h"
 #include "ssl.h"
 
 #include <assert.h>
@@ -370,30 +371,27 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
  * string. Refuses to update existing user if fingerprints do not match.
- * Expected format: "U|4 or 6|username|ip address"
+ * Expected format: "U|username|"
  * Returned format: "K (ok)" or NULL on failure
  */
 
-char *handle_update(const char *msg, hashtable_t *ht) {
+char *handle_update(const char *msg, hashtable_t *ht, struct sockaddr_storage *addr) {
   assert(msg != NULL && ht != NULL);
 
   userdata_t data = { 0 };
   data.tombstone = false;
-  char ip_type = '\0';
-  char ip_addr[INET6_ADDRSTRLEN + 1] = { '\0' };
-
-  int status_code = sscanf(msg, "%*c|%c|%31[^|]|%46s", &ip_type, data.username, ip_addr);
-  if (status_code != 3) {
+  int status_code = sscanf(msg, "%*c|%31[^|]|", data.username);
+  if (status_code != 1) {
     return NULL;
   }
-  if (ip_type == '4') {
+  data.username[31] = '\0';
+
+  if (addr->ss_family == AF_INET) {
     data.ip.family = AF_INET;
-    ip_addr[INET_ADDRSTRLEN] = '\0';
-    inet_pton(data.ip.family, ip_addr, &data.ip.addr.v4);
-  } else if (ip_type == '6') {
+    data.ip.addr.v4 = ((struct sockaddr_in *) addr)->sin_addr;
+  } else if (addr->ss_family == AF_INET6) {
     data.ip.family = AF_INET6;
-    ip_addr[INET6_ADDRSTRLEN] = '\0';
-    inet_pton(data.ip.family, ip_addr, &data.ip.addr.v6);
+    data.ip.addr.v6 = ((struct sockaddr_in6 *) addr)->sin6_addr;
   } else {
     return NULL;
   }
@@ -428,7 +426,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
   int addr_size = sizeof(addr);
   addr.sin6_family = AF_INET6;
   addr.sin6_addr = in6addr_any;
-  addr.sin6_port = htons(PORT);
+  addr.sin6_port = htons(LOOKUP_PORT);
 
   if (bind(endpoint, (struct sockaddr *) &addr, (socklen_t) addr_size) < 0) {
     fprintf(stderr, "[ERROR] bind() failed (%d)\n", errno);
@@ -439,7 +437,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
     fprintf(stderr, "[ERROR] listen() failed (%d)\n", errno);
     return;
   }
-  printf("[INFO] Listening on port %d...\n", PORT);
+  printf("[INFO] Listening on port %d...\n", LOOKUP_PORT);
 
 
   while (!global_terminate_program) {
@@ -492,7 +490,10 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
     printf("[INFO] Accepted request: %s\n", buf);
     char *response = NULL;
     if (method == METHOD_UPDATE) {
-      response = handle_update(buf, ht);
+      struct sockaddr_storage peer;
+      socklen_t size = sizeof(peer);
+      getpeername(handler_fd, (struct sockaddr *) &peer, &size);
+      response = handle_update(buf, ht, &peer);
     } else if (method == METHOD_FETCH) {
       response = handle_fetch(buf, ht);
     }

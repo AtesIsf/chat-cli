@@ -6,6 +6,7 @@
 #include <netinet/in.h>
 #include <openssl/crypto.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 
 #define INITIAL_TABLE_SIZE (16)
 #define MAX_TABLE_SIZE (1048576) // 2 ^ 20
@@ -13,7 +14,6 @@
 #define LOAD_FACTOR (0.67)
 #define RESIZE_FACTOR (2)
 #define MAX_USERNAME_LEN (32)
-#define PORT (56732)
 
 #define STORAGE_FILE ("/table.txt")
 
@@ -55,7 +55,7 @@ int delete_data(hashtable_t *, const char *);
 
 char *handle_fetch(const char *, hashtable_t *);
 
-char *handle_update(const char *, hashtable_t *);
+char *handle_update(const char *, hashtable_t *, sockaddr_storage *);
 
 void endpoint_manager(SSL_CTX *, hashtable_t *);
 

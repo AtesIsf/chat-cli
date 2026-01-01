@@ -29,7 +29,6 @@ void header_print(const char *username) {
   printf("Logged in as: %s\n", username);
   puts("~~~~~~~~~~~~~~~~~~~~~~~~");
   puts("- Chats:");
-  puts("~~~~~~~~~~~~~~~~~~~~~~~~");
 }
 
 /*
@@ -76,49 +75,12 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
 }
 
 /*
- * Displays the configurations. Throws an assertion
- * if the parameter is NULL. Can also edit configs if requested.
- */
-
-void display_settings(configs_t *conf) {
-  assert(conf != NULL);
-
-  bool exit_screen = false;
-  while (!exit_screen) {
-    int choice = -1;
-    clear_screen();
-    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    puts(">> Settings");
-    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    puts(">> Select 1 to exit");
-    puts(">> Select 2 to edit");
-    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    printf("* Client Port: %lu\n", conf->client_port);
-    printf("* Server Port: %lu\n", conf->server_port);
-
-    int status_code = scanf("%d", &choice);
-    if (status_code != 1) {
-      char temp = '\n';
-      do {
-        temp = getchar();
-      } while (temp != '\n' && temp != EOF);
-    }
-    exit_screen = choice == 1 ? true : false;
-    // TODO: editing logic
-    if (choice ==  2) {
-
-    }
-  }
-  clear_screen();
-}
-
-/*
  * The loop that serves as the interface for the user. Asserts
  * that the parameters are not NULL.
  */
 
-void cli_loop(sqlite3 *db, configs_t *conf, const char *username) {
-  assert(db != NULL && conf != NULL && username != NULL);
+void cli_loop(sqlite3 *db, const char *username) {
+  assert(db != NULL && username != NULL);
 
   signal(SIGINT, terminate);
   int n_chats = 0;
@@ -140,9 +102,9 @@ void cli_loop(sqlite3 *db, configs_t *conf, const char *username) {
       }
       printf("%lu) %s\n", i + 1, chat_names[i]);
     }
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
     printf("- Select a chat to go to by typing a number below (1-%lu):\n", i);
     printf("- Select %lu to exit Chat-CLI.\n", i + 1);
-    printf("- Select %lu to view settings.\n", i + 2);
 
     int status_code = scanf("%d", &choice);
     if (status_code != 1) {
@@ -155,9 +117,7 @@ void cli_loop(sqlite3 *db, configs_t *conf, const char *username) {
     // This equals the exit choice's number due to the loop
     if (choice == i + 1) {
       terminate_program = true;
-    } else if (choice == i + 2) {
-      display_settings(conf);
-    } else if (choice > i + 2) {
+    } else if (choice > i + 1) {
       // Invalid input, don't try to display a non-existant chat
       clear_screen();
     } else {

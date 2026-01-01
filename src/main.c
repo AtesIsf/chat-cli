@@ -1,11 +1,14 @@
 #include "cli.h"
 #include "database.h"
+#include "server.h"
+#include "shared_protocol.h"
 #include "ssl.h"
 
+#include <bits/sockaddr.h>
+#include <netinet/in.h>
 #include <openssl/ssl.h>
 #include <sqlite3.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 int main(int argc, char **argv) {
@@ -28,20 +31,17 @@ int main(int argc, char **argv) {
   if (ctx == NULL) {
     return 1;
   }
-  configs_t *conf = read_configs();
-  if (conf == NULL) {
-    return 1;
-  }
   sqlite3 *db = initialize_db();
   if (db == NULL) {
     return 1;
   }
 
-  cli_loop(db, conf, username);
+  // TODO: MAKE THIS ADJUSTABLE LATER!!! Now, its localhost for development purposes
+  ip_addr_t temp = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(INADDR_LOOPBACK)};
+  update_lookup_server(username, temp, LOOKUP_PORT, ctx);
+  cli_loop(db, username);
 
   sqlite3_close(db);
-  free(conf);
-  conf = NULL;
   SSL_CTX_free(ctx);
   ctx = NULL;
   return 0;
