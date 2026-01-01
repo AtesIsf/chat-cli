@@ -14,6 +14,9 @@
 #include <assert.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <openssl/evp.h>
+#include <openssl/sha.h>
+#include <openssl/x509.h>
 #include <signal.h>
 #include <math.h>
 #include <openssl/ssl.h>
@@ -366,12 +369,14 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Handles an update request (record new user or update existing).
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
- * string.
+ * string. Refuses to update existing user if fingerprints do not match.
  * Expected format: "U|4 or 6|username|ip address"
  * Returned format: "K (ok)" or NULL on failure
  */
 
-char *handle_update(const char *msg, hashtable_t *ht) {
+char *handle_update(const char *msg, hashtable_t *ht, unsigned char *fingerprint) {
+  assert(msg != NULL && ht != NULL && fingerprint != NULL);
+
   userdata_t data = { 0 };
   data.tombstone = false;
   char ip_type = '\0';
@@ -392,6 +397,17 @@ char *handle_update(const char *msg, hashtable_t *ht) {
   } else {
     return NULL;
   }
+
+  // Checks to see whether sent & stored fingerprints match
+  int index = get_index(ht, data.username);
+  if (index != -1) {
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+      if (ht->map[index].fingerprint[i] != fingerprint[i]) {
+        return NULL;
+      }
+    }
+  }
+
   int result = insert(ht, data);
   return result == 0 ? strdup(OK_RESPONSE) : NULL;
 }
@@ -484,9 +500,40 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
     }
 
     printf("[INFO] Accepted request: %s\n", buf);
+
+    X509 *certificate = SSL_get1_peer_certificate(ssl);
+    if (certificate == NULL) {
+      printf("[ERROR] Could not get peer certificate, will not process request.");
+      method = '\0';
+    }
+
+    EVP_PKEY *public_key = NULL;
+    if (certificate != NULL) {
+      public_key = X509_get_pubkey(certificate);
+    }
+    if (public_key == NULL) {
+      printf("[ERROR] Could not get peer public key, will not process request.");
+      method = '\0';
+    }
+
+    unsigned char *der = NULL;
+    int length = 0;
+    if (public_key != NULL) {
+      length =i2d_PUBKEY(public_key, &der);
+    }
+    if (length <= 0) {
+      printf("[ERROR] Could not process public key, will not process request.");
+      method = '\0';
+    }
+
+    unsigned char fingerprint[SHA256_DIGEST_LENGTH] = { '\0' };
+    if (der != NULL) {
+      SHA256(der, length, fingerprint);
+    }
+
     char *response = NULL;
     if (method == METHOD_UPDATE) {
-      response = handle_update(buf, ht);
+      response = handle_update(buf, ht, fingerprint);
     } else if (method == METHOD_FETCH) {
       response = handle_fetch(buf, ht);
     }
@@ -500,6 +547,15 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
       printf("[INFO] Sent reply: %s\n", ERR_RESPONSE);
       SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
     }
+
+    if (certificate != NULL) {
+      X509_free(certificate);
+    }
+    certificate = NULL;
+    if (public_key != NULL) {
+      EVP_PKEY_free(public_key);
+    }
+    public_key = NULL;
     SSL_shutdown(ssl);
     close(handler_fd);
     SSL_free(ssl);

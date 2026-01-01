@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <openssl/crypto.h>
+#include <openssl/sha.h>
 #include <stdbool.h>
 
 #define INITIAL_TABLE_SIZE (16)
@@ -34,6 +35,7 @@ typedef struct IPAddress {
 
 typedef struct UserData {
   char username[32];
+  unsigned char fingerprint[SHA256_DIGEST_LENGTH];
   ip_addr_t ip;
   bool tombstone;
 } userdata_t;
@@ -66,7 +68,7 @@ int delete_data(hashtable_t *, const char *);
 
 char *handle_fetch(const char *, hashtable_t *);
 
-char *handle_update(const char *, hashtable_t *);
+char *handle_update(const char *, hashtable_t *, unsigned char *);
 
 void endpoint_manager(SSL_CTX *, hashtable_t *);
 
