@@ -40,7 +40,8 @@ sqlite3 *initialize_db() {
 
   const char *sql_chats = "CREATE TABLE IF NOT EXISTS chats(" \
                           "id INTEGER PRIMARY KEY AUTOINCREMENT," \
-                          "username TEXT UNIQUE NOT NULL);";
+                          "username TEXT UNIQUE NOT NULL," \
+                          "fingerprint BLOB NOT NULL);";
   const char *sql_msgs = "CREATE TABLE IF NOT EXISTS messages(" \
                          "id INTEGER PRIMARY KEY AUTOINCREMENT," \
                          "chat_id INTEGER NOT NULL," \
@@ -48,10 +49,6 @@ sqlite3 *initialize_db() {
                          "content TEXT NOT NULL," \
                          "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP," \
                          "FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE);";
-  const char *sql_fingerprints = "CREATE TABLE IF NOT EXISTS fingerprints(" \
-                                 "id INTEGER PRIMARY KEY AUTOINCREMENT," \
-                                 "username TEXT UNIQUE NOT NULL," \
-                                 "fingerprint BLOB NOT NULL);";
   
   char *error_msg = NULL;
   status_code = sqlite3_exec(db, sql_chats, NULL, NULL, &error_msg);
@@ -61,12 +58,6 @@ sqlite3 *initialize_db() {
   }
 
   status_code = sqlite3_exec(db, sql_msgs, NULL, NULL, &error_msg);
-  if (status_code != SQLITE_OK) {
-    fprintf(stderr, "[ERROR] Error creating table \"messages\": %s\n", error_msg);
-    sqlite3_free(error_msg);
-  }
-
-  status_code = sqlite3_exec(db, sql_fingerprints, NULL, NULL, &error_msg);
   if (status_code != SQLITE_OK) {
     fprintf(stderr, "[ERROR] Error creating table \"messages\": %s\n", error_msg);
     sqlite3_free(error_msg);
