@@ -15,9 +15,18 @@ void clear_screen() {
   fflush(stdout);
 }
 
-void header_print() {
+/*
+ * Prints out the header for the CLI. Asserts that
+ * the given parameter is not NULL.
+ */
+
+void header_print(const char *username) {
+  assert(username != NULL);
+
   puts("~~~~~~~~~~~~~~~~~~~~~~~~");
   puts("\tChat-CLI");
+  puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+  printf("Logged in as: %s\n", username);
   puts("~~~~~~~~~~~~~~~~~~~~~~~~");
   puts("- Chats:");
 }
@@ -104,11 +113,11 @@ void display_settings(configs_t *conf) {
 
 /*
  * The loop that serves as the interface for the user. Asserts
- * that the parameter is not NULL.
+ * that the parameters are not NULL.
  */
 
-void cli_loop(sqlite3 *db, configs_t *conf) {
-  assert(db != NULL);
+void cli_loop(sqlite3 *db, configs_t *conf, const char *username) {
+  assert(db != NULL && conf != NULL && username != NULL);
 
   signal(SIGINT, terminate);
   int n_chats = 0;
@@ -122,7 +131,7 @@ void cli_loop(sqlite3 *db, configs_t *conf) {
 
   while (!terminate_program) {
     int choice = -1;
-    header_print();
+    header_print(username);
     size_t i = 0;
     for (i = 0; i < n_chats; i++) {
       if (chat_names[i] == NULL) {
