@@ -51,15 +51,24 @@ void get_cert_dirs() {
  * The pointer must be freed later. Returns NULL if it fails to initialize.
  */
 
-SSL_CTX *init_openssl() {
+SSL_CTX *init_openssl(enum ContextMode mode) {
   OPENSSL_init_ssl(0, NULL);
   SSL_load_error_strings();
   OpenSSL_add_ssl_algorithms();
 
-  SSL_CTX *ctx = SSL_CTX_new(TLS_server_method());
+  SSL_CTX *ctx = NULL;
+  if (mode == SERVER) {
+    ctx = SSL_CTX_new(TLS_server_method());
+  } else if (mode == CLIENT) {
+    ctx = SSL_CTX_new(TLS_client_method());
+  } else {
+    return NULL;
+  }
+
   SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL:!MD5:!RC4");
   SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
   SSL_CTX_set_ecdh_auto(ctx, 1);
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
 
   if (SSL_CTX_use_certificate_file(ctx, global_cert_path, SSL_FILETYPE_PEM) < 0) {
     puts("[ERROR] Required files do not exist! Run 'make keygen' in the project root to fix this.");

@@ -12,7 +12,6 @@
 #include <string.h>
 
 int main(int argc, char **argv) {
-  char *username = NULL;
   if (argc != 2) {
     puts("[ERROR] Incorrect format! Please run the program as such: \"chat-cli <USERNAME>\"");
     puts("Exiting...");
@@ -23,14 +22,21 @@ int main(int argc, char **argv) {
     puts("Exiting...");
     return 1;
   }
-  username = argv[1];
+  char username[32] = { '\0' };
+  strncpy(username, argv[1], 32);
   username[31] = '\0';
 
   get_cert_dirs();
-  SSL_CTX *ctx = init_openssl();
-  if (ctx == NULL) {
+
+  SSL_CTX *client_ctx = init_openssl(CLIENT);
+  if (client_ctx == NULL) {
     return 1;
   }
+  SSL_CTX *server_ctx = init_openssl(SERVER);
+  if (server_ctx == NULL) {
+    return 1;
+  }
+
   sqlite3 *db = initialize_db();
   if (db == NULL) {
     return 1;
@@ -38,11 +44,16 @@ int main(int argc, char **argv) {
 
   // TODO: MAKE THIS ADJUSTABLE LATER!!! Now, its localhost for development purposes
   ip_addr_t temp = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(INADDR_LOOPBACK)};
-  update_lookup_server(username, temp, LOOKUP_PORT, ctx);
+  int status_code = update_lookup_server(username, temp, client_ctx);
+  if (status_code == -1) {
+    puts("[WARNING] Could not update the lookup server with the current IP.");
+  }
   cli_loop(db, username);
 
   sqlite3_close(db);
-  SSL_CTX_free(ctx);
-  ctx = NULL;
+  SSL_CTX_free(client_ctx);
+  SSL_CTX_free(server_ctx);
+  client_ctx = NULL;
+  server_ctx = NULL;
   return 0;
 }

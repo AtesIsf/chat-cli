@@ -371,7 +371,7 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
  * string. Refuses to update existing user if fingerprints do not match.
- * Expected format: "U|username|"
+ * Expected format: "U|username"
  * Returned format: "K (ok)" or NULL on failure
  */
 
@@ -380,7 +380,7 @@ char *handle_update(const char *msg, hashtable_t *ht, struct sockaddr_storage *a
 
   userdata_t data = { 0 };
   data.tombstone = false;
-  int status_code = sscanf(msg, "%*c|%31[^|]|", data.username);
+  int status_code = sscanf(msg, "%*c|%32s", data.username);
   if (status_code != 1) {
     return NULL;
   }
@@ -518,7 +518,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
 int main() {
   generate_table_filename();
   get_cert_dirs();
-  SSL_CTX *ctx = init_openssl();
+  SSL_CTX *ctx = init_openssl(SERVER);
   if (ctx == NULL) {
     return 1;
   }

@@ -13,8 +13,13 @@
 extern char global_cert_path[256];
 extern char global_privkey_path[256];
 
+enum ContextMode {
+  SERVER,
+  CLIENT
+};
+
 void get_cert_dirs();
 
-SSL_CTX *init_openssl();
+SSL_CTX *init_openssl(enum ContextMode);
 
 #endif
