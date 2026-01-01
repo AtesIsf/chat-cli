@@ -29,6 +29,7 @@ void header_print(const char *username) {
   printf("Logged in as: %s\n", username);
   puts("~~~~~~~~~~~~~~~~~~~~~~~~");
   puts("- Chats:");
+  puts("~~~~~~~~~~~~~~~~~~~~~~~~");
 }
 
 /*
