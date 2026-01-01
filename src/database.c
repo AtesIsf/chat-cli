@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sqlite3.h>
+#include <openssl/sha.h>
 
 /*
  * Intitializes a local sqlite3 database. Opens it if one already exists,
@@ -153,6 +154,50 @@ int get_id_of_username(sqlite3 *db, const char *username) {
 
   sqlite3_finalize(statement);
   return id;
+}
+
+/*
+ * Fetches and returns a heap-allocated string that stores the
+ * fingerprint of the requested user. Returns NULL if the
+ * fingerprint cannot be found. Throws an assertion if any of
+ * the parameters are NULL or if a heap allocation error occurs.
+ * The returned pointer must be freed afterwards!!! The returned
+ * string has size SHA256_DIGEST_LENGTH + 1 as a null
+ * terminator is added to the end.
+ */
+
+unsigned char *get_fingerprint(sqlite3 *db, const char *username) {
+  assert(username != NULL);
+
+  const char *cmd = "SELECT fingerprint FROM chats"
+                    "WHERE username = ?;";
+
+  sqlite3_stmt *statement = NULL;
+  int status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to prepare to fetch requested fingerprint\n");
+    return NULL;
+  }
+
+  sqlite3_bind_text(statement, 1, username, -1, SQLITE_TRANSIENT);
+  if (sqlite3_step(statement) != SQLITE_ROW) {
+    sqlite3_finalize(statement);
+    return NULL;
+  }
+  const void *blob = sqlite3_column_blob(statement, 0);
+  int n_bytes = sqlite3_column_bytes(statement, 0);
+  if (blob == NULL || n_bytes != SHA256_DIGEST_LENGTH) {
+    sqlite3_finalize(statement);
+    return NULL;
+  }
+
+  unsigned char *fingerprint = calloc(sizeof(unsigned char), SHA256_DIGEST_LENGTH + 1);
+  assert(fingerprint != NULL);
+  fingerprint[SHA256_DIGEST_LENGTH] = '\0';
+  memcpy(fingerprint, blob, SHA256_DIGEST_LENGTH);
+
+  sqlite3_finalize(statement);
+  return fingerprint;
 }
 
 /*
