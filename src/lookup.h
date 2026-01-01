@@ -55,7 +55,7 @@ int delete_data(hashtable_t *, const char *);
 
 char *handle_fetch(const char *, hashtable_t *);
 
-char *handle_update(const char *, hashtable_t *, sockaddr_storage *);
+char *handle_update(const char *, hashtable_t *, struct sockaddr_storage *);
 
 void endpoint_manager(SSL_CTX *, hashtable_t *);
 
