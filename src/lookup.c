@@ -503,7 +503,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
 
     X509 *certificate = SSL_get1_peer_certificate(ssl);
     if (certificate == NULL) {
-      printf("[ERROR] Could not get peer certificate, will not process request.");
+      printf("[ERROR] Could not get peer certificate, will not process request.\n");
       method = '\0';
     }
 
@@ -512,7 +512,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
       public_key = X509_get_pubkey(certificate);
     }
     if (public_key == NULL) {
-      printf("[ERROR] Could not get peer public key, will not process request.");
+      printf("[ERROR] Could not get peer public key, will not process request.\n");
       method = '\0';
     }
 
@@ -522,7 +522,7 @@ void endpoint_manager(SSL_CTX *ctx, hashtable_t *ht) {
       length =i2d_PUBKEY(public_key, &der);
     }
     if (length <= 0) {
-      printf("[ERROR] Could not process public key, will not process request.");
+      printf("[ERROR] Could not process public key, will not process request.\n");
       method = '\0';
     }
 
