@@ -61,6 +61,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+
   // TODO: MAKE THIS ADJUSTABLE LATER!!! Now, its localhost for development purposes
   ip_addr_t temp = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(INADDR_LOOPBACK)};
   int status_code = update_lookup_server(username, temp, client_ctx);

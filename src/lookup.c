@@ -321,13 +321,13 @@ int delete_data(hashtable_t *ht, const char *username) {
  * given username doesn't exist in the hash table.
  * Throws an assertion if any of the parameters are NULL or
  * if a heap allocation error occurs. Returns a heap-allocated response string. 
- * Expected format: "method char|username"
- * Returned format: "4 or 6|ip address"
+ * Expected format: "method char|username|"
+ * Returned format: "4 or 6|ip address|"
  */
 
 char *handle_fetch(const char *msg, hashtable_t *ht) {
   char buf[MAX_USERNAME_LEN] = { '\0' };
-  int status_code = sscanf(msg, "%*c|%31s", buf);
+  int status_code = sscanf(msg, "%*c|%31[^|]|", buf);
   buf[31] = '\0';
   // The discarded char is not counted
   if (status_code != 1) {
@@ -359,7 +359,7 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
   inet_ntop(ip.family, src, ip_str, len);
   char *response = malloc(sizeof(char) * len + 4);
   assert(response != NULL);
-  sprintf(response, "%c|%s\n", type_char, ip_str);
+  sprintf(response, "%c|%s|", type_char, ip_str);
   response[len + 4] = '\0';
   free(ip_str);
 
@@ -371,7 +371,7 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
  * string. Refuses to update existing user if fingerprints do not match.
- * Expected format: "U|username"
+ * Expected format: "U|username|"
  * Returned format: "K (ok)" or NULL on failure
  */
 
@@ -380,7 +380,7 @@ char *handle_update(const char *msg, hashtable_t *ht, struct sockaddr_storage *a
 
   userdata_t data = { 0 };
   data.tombstone = false;
-  int status_code = sscanf(msg, "%*c|%32s", data.username);
+  int status_code = sscanf(msg, "%*c|%32[^|]|", data.username);
   if (status_code != 1) {
     return NULL;
   }
