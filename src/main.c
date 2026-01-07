@@ -4,12 +4,26 @@
 #include "shared_protocol.h"
 #include "ssl.h"
 
+#include <assert.h>
 #include <bits/sockaddr.h>
 #include <netinet/in.h>
 #include <openssl/ssl.h>
 #include <sqlite3.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+
+bool is_valid_username(const char *username) {
+  assert(username != NULL);
+  for (size_t i = 0; i < strlen(username); i++) {
+    if ((username[i] >= 'a' && username[i] <= 'z') || (username[i] >= '0' && username[i] <= '9')) {
+      continue;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -22,6 +36,11 @@ int main(int argc, char **argv) {
     puts("Exiting...");
     return 1;
   }
+  if (!is_valid_username(argv[1])) {
+    puts("[ERROR] The username can only contain numbers and lowercase characters!");
+    return 1;
+  }
+
   char username[32] = { '\0' };
   strncpy(username, argv[1], 32);
   username[31] = '\0';
