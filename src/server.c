@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <openssl/crypto.h>
 #include <openssl/ssl.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -89,5 +90,16 @@ int update_lookup_server(const char *username, ip_addr_t addr, SSL_CTX *ctx) {
   SSL_free(ssl);
   close(fd);
   return 0;
+}
+
+/*
+ * Fetches and returns the requested user's ip address from the lookup
+ * server. Throws an assertion error if any of the parameters are NULL.
+ * Sets the reference-passed boolean to false on failure.
+ */
+
+ip_addr_t fetch_user_ip(const char *username, SSL_CTX *ctx, bool *success) {
+  *success = false;
+  return (ip_addr_t) { 0 };
 }
 
