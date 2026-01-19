@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include <bits/sockaddr.h>
+#include <signal.h>
 #include <netinet/in.h>
 #include <openssl/ssl.h>
 #include <sqlite3.h>
@@ -26,6 +27,8 @@ bool is_valid_username(const char *username) {
 }
 
 int main(int argc, char **argv) {
+  signal(SIGINT, handle_terminate);
+
   if (argc != 2) {
     puts("[ERROR] Incorrect format! Please run the program as such: \"chat-cli <USERNAME>\"");
     puts("Exiting...");

@@ -1,6 +1,7 @@
 #include "server.h"
 
 #include <arpa/inet.h>
+#include <asm-generic/socket.h>
 #include <assert.h>
 #include <netinet/in.h>
 #include <openssl/crypto.h>
@@ -10,6 +11,12 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+
+bool global_terminate_program = false;
+
+void handle_terminate(int n) {
+  global_terminate_program = true;
+}
 
 /*
  * Updates the lookup server with the current ip address
@@ -204,5 +211,86 @@ ip_addr_t fetch_user_ip(const char *username, ip_addr_t addr, SSL_CTX *ctx, bool
   }
   *success = true;
   return result;
+}
+
+/*
+ * Will run in the background, handles incoming messages.
+ * Will throw an assertion if the passed argument is NULL.
+ */
+
+void receive_messages(SSL_CTX *ctx) {
+  assert(ctx != NULL);
+  char msg_buf[256] = { '\0' };
+
+  int fd = socket(AF_INET6, SOCK_STREAM, 0);
+  if (fd < 0) {
+    puts("[ERROR] Failed to create listening socket!");
+    return;
+  }
+
+  int option = 1;
+  setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+
+  struct sockaddr_in6 addr = {
+    .sin6_family = AF_INET6,
+    .sin6_addr = in6addr_any,
+    .sin6_port = htons(CLIENT_PORT),
+  };
+
+  int status_code = bind(fd, (struct sockaddr *) &addr, sizeof(addr));
+  if (status_code < 0) {
+    puts("[ERROR] Could not bind to the client port!");
+    close(fd);
+    return;
+  }
+
+  status_code = listen(fd, 32);
+  if (status_code < 16) {
+    puts("[ERROR] An error occured while attempting to listen to incoming connections!");
+    close(fd);
+    return;
+  }
+  
+  while (!global_terminate_program) {
+    struct sockaddr_storage peer = { 0 };
+    socklen_t peer_len = sizeof(peer);
+
+    int client_fd = accept(fd, (struct sockaddr *) &peer, &peer_len);
+    if (client_fd < 0) {
+      puts("[WARNING] Could not accept incoming connection.");
+      continue;
+    }
+
+    SSL *ssl = SSL_new(ctx);
+    if (ssl == NULL) {
+      puts("[WARNING] Could not initialize SSL.");
+      close(client_fd);
+      continue;
+    }
+
+    SSL_set_fd(ssl, client_fd);
+
+    if (SSL_accept(ssl) != 1) {
+      puts("[WARNING] Could not SSL-Accept incoming connection.");
+      SSL_free(ssl);
+      close(client_fd);
+      continue;
+    }
+
+    handle_incoming(ssl, &peer);
+
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+    ssl = NULL;
+  }
+  puts("[INFO] Closed client socket.");
+}
+
+/*
+ * Handles incoming messages. Asserts given parameters are not NULL.
+ */
+
+void handle_incoming(SSL *ssl, struct sockaddr_storage *peer) {
+  assert(ssl != NULL && peer != NULL);
 }
 
