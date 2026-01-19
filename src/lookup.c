@@ -370,7 +370,7 @@ char *handle_fetch(const char *msg, hashtable_t *ht) {
  * Handles an update request (record new user or update existing).
  * Throws an assertion if any of the parameters are NULL or if a
  * heap allocation error occurs. Returns a heap-allocated response
- * string. Refuses to update existing user if fingerprints do not match.
+ * string.
  * Expected format: "U|username|"
  * Returned format: "K (ok)" or NULL on failure
  */

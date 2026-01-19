@@ -169,8 +169,7 @@ int get_id_of_username(sqlite3 *db, const char *username) {
 unsigned char *get_fingerprint(sqlite3 *db, const char *username) {
   assert(username != NULL);
 
-  const char *cmd = "SELECT fingerprint FROM chats"
-                    "WHERE username = ?;";
+  const char *cmd = "SELECT fingerprint FROM chats WHERE username = ?;";
 
   sqlite3_stmt *statement = NULL;
   int status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
@@ -233,8 +232,7 @@ msg_t *get_messages_from_chat_id(sqlite3 *db, int chat_id, int *n_msgs) {
   messages = malloc(sizeof(msg_t) * (*n_msgs));
   assert(messages != NULL);
 
-  const char *cmd = "SELECT is_sent, content, timestamp FROM messages"
-                    "WHERE chat_id = ? ORDER BY timestamp ASC;";
+  const char *cmd = "SELECT is_sent, content, timestamp FROM messages WHERE chat_id = ? ORDER BY timestamp ASC;";
 
   sqlite3_stmt *statement = NULL;
   status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);

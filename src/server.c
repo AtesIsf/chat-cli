@@ -1,5 +1,8 @@
 #include "server.h"
 
+#include "database.h"
+#include "shared_protocol.h"
+
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
 #include <assert.h>
@@ -8,8 +11,10 @@
 #include <openssl/ssl.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <time.h>
 #include <unistd.h>
 
 bool global_terminate_program = false;
@@ -220,7 +225,6 @@ ip_addr_t fetch_user_ip(const char *username, ip_addr_t addr, SSL_CTX *ctx, bool
 
 void receive_messages(SSL_CTX *ctx) {
   assert(ctx != NULL);
-  char msg_buf[256] = { '\0' };
 
   int fd = socket(AF_INET6, SOCK_STREAM, 0);
   if (fd < 0) {
@@ -288,9 +292,56 @@ void receive_messages(SSL_CTX *ctx) {
 
 /*
  * Handles incoming messages. Asserts given parameters are not NULL.
+ * Throws an assertion on heap allocation failures.
+ * Expects messages in the format "username|content"
  */
 
 void handle_incoming(SSL *ssl, struct sockaddr_storage *peer) {
   assert(ssl != NULL && peer != NULL);
+  char buf[256] = { '\0' };
+
+  int n_bytes_read = SSL_read(ssl, buf, sizeof(buf) - 1);
+  if (n_bytes_read <= 0) {
+    return;
+  }
+  buf[n_bytes_read] = '\0';
+
+  // Here, I dont have to validate username length as the program
+  // does it at the start and even if it somehow didn't, it doesn't break anything
+  char username[32] = { '\0' };
+  int status_code = sscanf(buf, "%31[^|]|", username);
+  username[31] = '\0';
+  if (status_code != 1) {
+    SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
+    return;
+  }
+
+  // TODO: Username pubkey validation here
+
+  int buf_len = strlen(buf);
+  int index = 0;
+  while (buf[index] != '|' && index < buf_len) index++;
+  char *content_start = &buf[++index];
+  if (index == buf_len) {
+    SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
+    return;
+  }
+
+  time_t now = time(NULL);
+  struct tm time_now = { 0 };
+  char time_buf[32] = { '\0' };
+
+  size_t n = strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &time_now);
+
+  msg_t msg = {
+    .is_sent = false,
+    .content = content_start,
+    .timestamp = time_buf,
+  };
+
+  // TODO: Write msg to DB
+
+  // OK
+  SSL_write(ssl, OK_RESPONSE, strlen(OK_RESPONSE));
 }
 
