@@ -4,6 +4,7 @@
 #include "shared_protocol.h"
 
 #include <openssl/crypto.h>
+#include <sqlite3.h>
 #include <stdbool.h>
 
 #define CLIENT_PORT (47906)
@@ -19,7 +20,7 @@ ip_addr_t fetch_user_ip(const char *, ip_addr_t, SSL_CTX *, bool *);
 
 void receive_messages(SSL_CTX *);
 
-void handle_incoming(SSL *, struct sockaddr_storage *);
+void handle_incoming(SSL *, struct sockaddr_storage *, sqlite3 *);
 
 #endif
 

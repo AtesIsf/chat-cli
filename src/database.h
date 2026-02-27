@@ -1,6 +1,7 @@
 #ifndef CHAT_DB_H
 #define CHAT_DB_H
 
+#include <openssl/crypto.h>
 #include <stdbool.h>
 #include <sqlite3.h>
 #include <stddef.h>

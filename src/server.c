@@ -281,7 +281,8 @@ void receive_messages(SSL_CTX *ctx) {
       continue;
     }
 
-    handle_incoming(ssl, &peer);
+    // TODO: Uncomment this
+    // handle_incoming(ssl, &peer);
 
     SSL_shutdown(ssl);
     SSL_free(ssl);
@@ -296,7 +297,7 @@ void receive_messages(SSL_CTX *ctx) {
  * Expects messages in the format "username|content"
  */
 
-void handle_incoming(SSL *ssl, struct sockaddr_storage *peer) {
+void handle_incoming(SSL *ssl, struct sockaddr_storage *peer, sqlite3 *sql) {
   assert(ssl != NULL && peer != NULL);
   char buf[256] = { '\0' };
 
@@ -316,19 +317,43 @@ void handle_incoming(SSL *ssl, struct sockaddr_storage *peer) {
     return;
   }
 
-  // TODO: Username pubkey validation here
-
-  int buf_len = strlen(buf);
-  int index = 0;
-  while (buf[index] != '|' && index < buf_len) index++;
-  char *content_start = &buf[++index];
-  if (index == buf_len) {
-    SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
+  // Username pubkey validation here
+  X509 *cert = SSL_get1_peer_certificate(ssl);
+  if (cert == NULL) {
+    printf("[WARNING] Rejected unverified message from so-called: %s", username);
     return;
   }
 
+  unsigned char *fingerprint = get_fingerprint(sql, username);
+  unsigned char hash[EVP_MAX_MD_SIZE];
+  unsigned int hash_len;
+  if (!X509_digest(cert, EVP_sha256(), hash, &hash_len)) {
+      X509_free(cert);
+      return;
+  }
+  X509_free(cert);
+
+  char fingerprint_hex[65] = {0};
+  for (unsigned int i = 0; i < hash_len; i++) {
+      sprintf(&fingerprint_hex[i * 2], "%02x", hash[i]);
+  }
+
+  int result = strcmp(fingerprint_hex, (const char *) fingerprint);
+  if (result != 0) {
+    printf("[WARNING] Rejected unverified message from so-called: %s", username);
+    return;
+  }
+
+  char *separator = strchr(buf, '|');
+  if (separator == NULL) {
+      SSL_write(ssl, ERR_RESPONSE, strlen(ERR_RESPONSE));
+      return;
+  }
+  char *content_start = separator + 1;
+
   time_t now = time(NULL);
   struct tm time_now = { 0 };
+  localtime_r(&now, &time_now);
   char time_buf[32] = { '\0' };
 
   size_t n = strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", &time_now);

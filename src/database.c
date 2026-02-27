@@ -50,7 +50,7 @@ sqlite3 *initialize_db() {
                          "content TEXT NOT NULL," \
                          "timestamp DATETIME DEFAULT CURRENT_TIMESTAMP," \
                          "FOREIGN KEY (chat_id) REFERENCES chats(id) ON DELETE CASCADE);";
-  
+
   char *error_msg = NULL;
   status_code = sqlite3_exec(db, sql_chats, NULL, NULL, &error_msg);
   if (status_code != SQLITE_OK) {
