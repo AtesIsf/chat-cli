@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <openssl/ssl.h>
+#include <pthread.h>
 #include <sqlite3.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -71,7 +72,15 @@ int main(int argc, char **argv) {
   if (status_code == -1) {
     puts("[WARNING] Could not update the lookup server with the current IP.");
   }
-  cli_loop(db, username);
+
+  pthread_t thread;
+  server_args_t args = { .ctx = server_ctx, .db = db };
+  pthread_create(&thread, NULL, receive_messages, &args);
+
+  cli_loop(db, username, client_ctx);
+
+  global_terminate_program = true;
+  pthread_join(thread, NULL);
 
   sqlite3_close(db);
   SSL_CTX_free(client_ctx);

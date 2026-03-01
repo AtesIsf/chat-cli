@@ -267,3 +267,67 @@ msg_t *get_messages_from_chat_id(sqlite3 *db, int chat_id, int *n_msgs) {
   return messages;
 }
 
+/*
+ * Inserts a new chat into the database. Asserts that parameters are not NULL.
+ * Returns the id of the new chat on success, -1 on failure.
+ */
+
+int add_chat(sqlite3 *db, const char *username, unsigned char *fingerprint) {
+  assert(db != NULL && username != NULL && fingerprint != NULL);
+
+  const char *cmd = "INSERT INTO chats(username, fingerprint) VALUES(?, ?);";
+  sqlite3_stmt *statement = NULL;
+
+  int status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to prepare to add chat: %s\n", sqlite3_errmsg(db));
+    return -1;
+  }
+
+  sqlite3_bind_text(statement, 1, username, -1, SQLITE_TRANSIENT);
+  sqlite3_bind_blob(statement, 2, fingerprint, SHA256_DIGEST_LENGTH, SQLITE_TRANSIENT);
+
+  status_code = sqlite3_step(statement);
+  if (status_code != SQLITE_DONE) {
+    fprintf(stderr, "[ERROR] Failed to insert new chat: %s\n", sqlite3_errmsg(db));
+    sqlite3_finalize(statement);
+    return -1;
+  }
+
+  int id = sqlite3_last_insert_rowid(db);
+  sqlite3_finalize(statement);
+  return id;
+}
+
+/*
+ * Inserts a new message into the database. Asserts that parameters are not NULL.
+ * Returns true on success, false on failure.
+ */
+
+bool insert_message(sqlite3 *db, int chat_id, bool is_sent, const char *content) {
+  assert(db != NULL && chat_id >= 0 && content != NULL);
+
+  const char *cmd = "INSERT INTO messages(chat_id, is_sent, content) VALUES(?, ?, ?);";
+  sqlite3_stmt *statement = NULL;
+
+  int status_code = sqlite3_prepare_v2(db, cmd, -1, &statement, NULL);
+  if (status_code != SQLITE_OK) {
+    fprintf(stderr, "[ERROR] Failed to prepare to insert message: %s\n", sqlite3_errmsg(db));
+    return false;
+  }
+
+  sqlite3_bind_int(statement, 1, chat_id);
+  sqlite3_bind_int(statement, 2, is_sent ? 1 : 0);
+  sqlite3_bind_text(statement, 3, content, -1, SQLITE_TRANSIENT);
+
+  status_code = sqlite3_step(statement);
+  if (status_code != SQLITE_DONE) {
+    fprintf(stderr, "[ERROR] Failed to insert message: %s\n", sqlite3_errmsg(db));
+    sqlite3_finalize(statement);
+    return false;
+  }
+
+  sqlite3_finalize(statement);
+  return true;
+}
+

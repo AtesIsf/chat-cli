@@ -1,13 +1,15 @@
 #include "cli.h"
 #include "database.h"
+#include "server.h"
 
 #include <assert.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 void terminate(int n) {
-  terminate_program = true;
+  global_terminate_program = true;
 }
 
 void clear_screen() {
@@ -37,38 +39,71 @@ void header_print(const char *username) {
  * nonnegative.
  */
 
-void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
-  assert(db != NULL && id >= 0);
+void display_chat_interface(sqlite3 *db, int id, const char *chat_name, const char *my_username, SSL_CTX *ctx) {
+  assert(db != NULL && id >= 0 && my_username != NULL && ctx != NULL);
   int n_msgs = 0;
 
-  // TODO: You may not want to load all messages at the same time
   msg_t *messages = get_messages_from_chat_id(db, id, &n_msgs);
 
   bool exit_screen = false;
   while (!exit_screen) {
-    int choice = -1;
     clear_screen();
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
     printf(">> Chat with: %s\n", chat_name);
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    puts(">> Select 1 to exit");
-    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-
+    
     for (size_t i = 0; i < n_msgs; i++) {
-      puts(messages[i].content);
+      printf("[%s] %s: %s\n", messages[i].timestamp, 
+             messages[i].is_sent ? my_username : chat_name, 
+             messages[i].content);
     }
     
-    // TODO: Implement this after finishing message displaying
-    int status_code = scanf("%d", &choice);
-    if (status_code != 1) {
-      char temp = '\n';
-      do {
-        temp = getchar();
-      } while (temp != '\n' && temp != EOF);
+    puts("~~~~~~~~~~~~~~~~~~~~~~~~");
+    puts(">> Enter message to send, or ':q' to exit:");
+    printf(">> ");
+    
+    char input_buf[256] = { '\0' };
+    if (fgets(input_buf, 255, stdin) == NULL) {
+      break;
     }
-    exit_screen = choice == 1 ? true : false;
+    
+    // Remove newline
+    input_buf[strcspn(input_buf, "\n")] = 0;
+
+    if (strcmp(input_buf, ":q") == 0) {
+      exit_screen = true;
+    } else if (strlen(input_buf) > 0) {
+      // Send logic
+      bool success = false;
+      // TODO: Make the lookup server IP configurable!
+      ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(INADDR_LOOPBACK)};
+      ip_addr_t peer_addr = fetch_user_ip(chat_name, lookup_addr, ctx, &success);
+      
+      if (success) {
+        if (send_message(my_username, input_buf, peer_addr, ctx) == 0) {
+          insert_message(db, id, true, input_buf);
+          // Refresh messages
+          for(int i = 0; i < n_msgs; i++) {
+            free(messages[i].content);
+            free(messages[i].timestamp);
+          }
+          free(messages);
+          messages = get_messages_from_chat_id(db, id, &n_msgs);
+        } else {
+          puts("[ERROR] Failed to send message to peer.");
+          getchar(); // Wait for user
+        }
+      } else {
+        puts("[ERROR] Could not find peer IP.");
+        getchar();
+      }
+    }
   }
 
+  for(int i = 0; i < n_msgs; i++) {
+    free(messages[i].content);
+    free(messages[i].timestamp);
+  }
   free(messages);
   messages = NULL;
   clear_screen();
@@ -79,8 +114,8 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name) {
  * that the parameters are not NULL.
  */
 
-void cli_loop(sqlite3 *db, const char *username) {
-  assert(db != NULL && username != NULL);
+void cli_loop(sqlite3 *db, const char *username, SSL_CTX *ctx) {
+  assert(db != NULL && username != NULL && ctx != NULL);
 
   signal(SIGINT, terminate);
   int n_chats = 0;
@@ -92,7 +127,7 @@ void cli_loop(sqlite3 *db, const char *username) {
     ids[i] = get_id_of_username(db, chat_names[i]);
   }
 
-  while (!terminate_program) {
+  while (!global_terminate_program) {
     int choice = -1;
     header_print(username);
     size_t i = 0;
@@ -106,27 +141,23 @@ void cli_loop(sqlite3 *db, const char *username) {
     printf("- Select a chat to go to by typing a number below (1-%lu):\n", i);
     printf("- Select %lu to exit Chat-CLI.\n", i + 1);
 
-    int status_code = scanf("%d", &choice);
-    if (status_code != 1) {
-      char temp = '\n';
-      do {
-        temp = getchar();
-      } while (temp != '\n' && temp != EOF);
-    }
+    scanf("%d", &choice);
+    // Clear the buffer after scanf to avoid issues with fgets later
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
 
     // This equals the exit choice's number due to the loop
     if (choice == i + 1) {
-      terminate_program = true;
-    } else if (choice > i + 1) {
-      // Invalid input, don't try to display a non-existant chat
-      clear_screen();
-    } else {
+      global_terminate_program = true;
+    } else if (choice > 0 && choice <= i) {
       clear_screen();
       const char *selected_username = chat_names[choice - 1];
       int id = ids[choice - 1];
       if (id >= 0) {
-        display_chat_interface(db, id, selected_username);
+        display_chat_interface(db, id, selected_username, username, ctx);
       }
+    } else {
+      clear_screen();
     }
   }
 

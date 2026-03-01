@@ -24,7 +24,11 @@ const char **get_chats(sqlite3 *, int *);
 
 int get_id_of_username(sqlite3 *, const char *);
 
+int add_chat(sqlite3 *, const char *, unsigned char *);
+
 unsigned char *get_fingerprint(sqlite3 *, const char *);
+
+bool insert_message(sqlite3 *, int, bool, const char *);
 
 msg_t *get_messages_from_chat_id(sqlite3 *, int, int *);
 
