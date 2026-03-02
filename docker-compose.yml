@@ -1,0 +1,47 @@
+services:
+  lookup:
+    build: .
+    command: ./lookup
+    tty: true
+    networks:
+      chat-net:
+        ipv4_address: 172.20.0.2
+
+  user1:
+    build: .
+    command: ./chat-cli user1
+    stdin_open: true
+    tty: true
+    depends_on:
+      - lookup
+    networks:
+      chat-net:
+        ipv4_address: 172.20.0.3
+
+  user2:
+    build: .
+    command: ./chat-cli user2
+    stdin_open: true
+    tty: true
+    depends_on:
+      - lookup
+    networks:
+      chat-net:
+        ipv4_address: 172.20.0.4
+
+  user3:
+    build: .
+    command: ./chat-cli user3
+    stdin_open: true
+    tty: true
+    depends_on:
+      - lookup
+    networks:
+      chat-net:
+        ipv4_address: 172.20.0.5
+
+networks:
+  chat-net:
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

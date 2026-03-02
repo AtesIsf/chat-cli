@@ -1,0 +1,7 @@
+bin/
+chat-cli
+lookup
+vgcore.*
+*.o
+.git
+.gitignore

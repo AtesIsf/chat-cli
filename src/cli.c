@@ -53,8 +53,8 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name, const ch
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
     
     for (size_t i = 0; i < n_msgs; i++) {
-      printf("[%s] %s: %s\n", messages[i].timestamp, 
-             messages[i].is_sent ? my_username : chat_name, 
+      printf("[%s] %s %s\n", messages[i].timestamp, 
+             messages[i].is_sent ? ">>" : "<<", 
              messages[i].content);
     }
     
@@ -75,12 +75,11 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name, const ch
     } else if (strlen(input_buf) > 0) {
       // Send logic
       bool success = false;
-      // TODO: Make the lookup server IP configurable!
-      ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(INADDR_LOOPBACK)};
+      ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_IP)};
       ip_addr_t peer_addr = fetch_user_ip(chat_name, lookup_addr, ctx, &success);
       
       if (success) {
-        if (send_message(my_username, input_buf, peer_addr, ctx) == 0) {
+        if (send_message(my_username, input_buf, peer_addr, ctx, NULL) == 0) {
           insert_message(db, id, true, input_buf);
           // Refresh messages
           for(int i = 0; i < n_msgs; i++) {
@@ -118,37 +117,56 @@ void cli_loop(sqlite3 *db, const char *username, SSL_CTX *ctx) {
   assert(db != NULL && username != NULL && ctx != NULL);
 
   signal(SIGINT, terminate);
-  int n_chats = 0;
-  const char **chat_names = get_chats(db, &n_chats);
-
-  int *ids = malloc(sizeof(int) * n_chats);
-  assert(ids != NULL);
-  for (int i = 0; i < n_chats; i++) {
-    ids[i] = get_id_of_username(db, chat_names[i]);
-  }
 
   while (!global_terminate_program) {
+    int n_chats = 0;
+    const char **chat_names = get_chats(db, &n_chats);
+
+    int *ids = NULL;
+    if (n_chats > 0) {
+      ids = malloc(sizeof(int) * n_chats);
+      assert(ids != NULL);
+      for (int i = 0; i < n_chats; i++) {
+        ids[i] = get_id_of_username(db, chat_names[i]);
+      }
+    }
+
     int choice = -1;
     header_print(username);
-    size_t i = 0;
+    int i = 0;
     for (i = 0; i < n_chats; i++) {
       if (chat_names[i] == NULL) {
         continue;
       }
-      printf("%lu) %s\n", i + 1, chat_names[i]);
+      printf("%d) %s\n", i + 1, chat_names[i]);
     }
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    printf("- Select a chat to go to by typing a number below (1-%lu):\n", i);
-    printf("- Select %lu to exit Chat-CLI.\n", i + 1);
+    printf("- Select a chat to go to by typing a number below:\n");
+    printf("- Select %d to start a NEW chat.\n", i + 1);
+    printf("- Select %d to exit Chat-CLI.\n", i + 2);
+    printf("- Enter 0 to REFRESH the chat list.\n");
 
-    scanf("%d", &choice);
-    // Clear the buffer after scanf to avoid issues with fgets later
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF);
+    int return_val = scanf("%d", &choice);
+    if (return_val != 1) {
+      // Clear the buffer if user entered something else
+      int c;
+      while ((c = getchar()) != '\n' && c != EOF);
+      clear_screen();
+      choice = -1; // Reset choice to stay in loop
+    } else {
+      // Clear the buffer after scanf to avoid issues with fgets later
+      int c;
+      while ((c = getchar()) != '\n' && c != EOF);
+    }
 
     // This equals the exit choice's number due to the loop
-    if (choice == i + 1) {
+    if (choice == i + 2) {
       global_terminate_program = true;
+    } else if (choice == i + 1) {
+      clear_screen();
+      start_new_chat(db, username, ctx);
+    } else if (choice == 0) {
+      clear_screen();
     } else if (choice > 0 && choice <= i) {
       clear_screen();
       const char *selected_username = chat_names[choice - 1];
@@ -159,17 +177,63 @@ void cli_loop(sqlite3 *db, const char *username, SSL_CTX *ctx) {
     } else {
       clear_screen();
     }
+    if (chat_names != NULL) {
+      for (int j = 0; j < n_chats; j++) {
+        free((void *) chat_names[j]);
+      }
+      free(chat_names);
+    }
+    if (ids != NULL) {
+      free(ids);
+    }
   }
-
-  for (size_t i = 0; i < n_chats; i++) {
-    free((void *) chat_names[i]);
-    chat_names[i] = NULL;
-  }
-  free(chat_names);
-  chat_names = NULL;
-  free(ids);
-  ids = NULL;
-
   puts("\n[Info] Shutting Down...");
+}
+
+void start_new_chat(sqlite3 *db, const char *my_username, SSL_CTX *ctx) {
+  assert(db != NULL && my_username != NULL && ctx != NULL);
+
+  printf(">> Enter username of the person you want to chat with:\n>> ");
+  char target_username[32] = { '\0' };
+  if (fgets(target_username, 31, stdin) == NULL) {
+    return;
+  }
+  target_username[strcspn(target_username, "\n")] = 0;
+
+  if (strlen(target_username) == 0) {
+    return;
+  }
+
+  bool success = false;
+  ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_IP)};
+  ip_addr_t peer_addr = fetch_user_ip(target_username, lookup_addr, ctx, &success);
+
+  if (!success) {
+    printf("[ERROR] User '%s' not found on the lookup server.\n", target_username);
+    getchar();
+    return;
+  }
+
+  printf(">> Enter your first message to %s:\n>> ", target_username);
+  char message[256] = { '\0' };
+  if (fgets(message, 255, stdin) == NULL) {
+    return;
+  }
+  message[strcspn(message, "\n")] = 0;
+
+  unsigned char real_fingerprint[32] = { 0 }; 
+  if (send_message(my_username, message, peer_addr, ctx, real_fingerprint) == 0) {
+    // Message sent, now add chat to DB with REAL fingerprint.
+    int chat_id = add_chat(db, target_username, real_fingerprint);
+    if (chat_id != -1) {
+      insert_message(db, chat_id, true, message);
+      printf("[INFO] Chat started with %s.\n", target_username);
+    } else {
+      puts("[ERROR] Failed to add chat to database.");
+    }
+  } else {
+    puts("[ERROR] Failed to send message to peer.");
+  }
+  getchar();
 }
 

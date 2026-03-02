@@ -10,6 +10,7 @@
 #define OK_RESPONSE ("K\0")
 
 #define LOOKUP_PORT (56732)
+#define LOOKUP_IP (0xAC140002) // 172.20.0.2 in host byte order, to be used in docker
 
 typedef struct IPAddress {
   sa_family_t family;

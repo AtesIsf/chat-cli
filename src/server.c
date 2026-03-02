@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <time.h>
 #include <unistd.h>
 
 bool global_terminate_program = false;
@@ -111,7 +110,7 @@ int update_lookup_server(const char *username, ip_addr_t addr, SSL_CTX *ctx) {
  * Returns 0 on success, -1 on failure.
  */
 
-int send_message(const char *my_username, const char *content, ip_addr_t addr, SSL_CTX *ctx) {
+int send_message(const char *my_username, const char *content, ip_addr_t addr, SSL_CTX *ctx, unsigned char *out_fingerprint) {
   assert(my_username != NULL && content != NULL && ctx != NULL);
 
   int fd = socket(addr.family, SOCK_STREAM, 0);
@@ -156,6 +155,15 @@ int send_message(const char *my_username, const char *content, ip_addr_t addr, S
     SSL_free(ssl);
     close(fd);
     return -1;
+  }
+
+  if (out_fingerprint != NULL) {
+    X509 *cert = SSL_get1_peer_certificate(ssl);
+    if (cert != NULL) {
+      unsigned int hash_len;
+      X509_digest(cert, EVP_sha256(), out_fingerprint, &hash_len);
+      X509_free(cert);
+    }
   }
 
   // Format: "username|content"

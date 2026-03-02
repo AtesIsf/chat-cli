@@ -21,7 +21,7 @@ void handle_terminate(int);
 
 int update_lookup_server(const char *, ip_addr_t, SSL_CTX *);
 
-int send_message(const char *, const char *, ip_addr_t, SSL_CTX *);
+int send_message(const char *, const char *, ip_addr_t, SSL_CTX *, unsigned char *);
 
 ip_addr_t fetch_user_ip(const char *, ip_addr_t, SSL_CTX *, bool *);
 

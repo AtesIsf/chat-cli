@@ -221,7 +221,7 @@ msg_t *get_messages_from_chat_id(sqlite3 *db, int chat_id, int *n_msgs) {
   }
   sqlite3_bind_int(count_statement, 1, chat_id);
   status_code = sqlite3_step(count_statement);
-  if (status_code != SQLITE_OK) {
+  if (status_code != SQLITE_ROW) {
     fprintf(stderr, "[ERROR] Failed to count messages.");
     sqlite3_finalize(count_statement);
     return messages;

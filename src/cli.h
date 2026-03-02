@@ -20,4 +20,6 @@ void handle_choice(int);
 
 void cli_loop(sqlite3 *, const char *, SSL_CTX *);
 
+void start_new_chat(sqlite3 *db, const char *my_username, SSL_CTX *ctx);
+
 #endif

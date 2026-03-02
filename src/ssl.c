@@ -46,6 +46,10 @@ void get_cert_dirs() {
   global_cert_path[255] = '\0';
 }
 
+static int verify_callback(int preverify_ok, X509_STORE_CTX *x509_ctx) {
+    return 1; // Always continue handshake, we do manual TOFU verification
+}
+
 /*
  * Initializes the OPENSSL context and returns a SSL_CTX pointer.
  * The pointer must be freed later. Returns NULL if it fails to initialize.
@@ -68,7 +72,13 @@ SSL_CTX *init_openssl(enum ContextMode mode) {
   SSL_CTX_set_cipher_list(ctx, "HIGH:!aNULL:!MD5:!RC4");
   SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
   SSL_CTX_set_ecdh_auto(ctx, 1);
-  SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
+
+  if (mode == SERVER) {
+    // Request certificate but don't fail if verification fails (we do manual TOFU)
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, verify_callback);
+  } else {
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, NULL);
+  }
 
   if (SSL_CTX_use_certificate_file(ctx, global_cert_path, SSL_FILETYPE_PEM) < 0) {
     puts("[ERROR] Required files do not exist! Run 'make keygen' in the project root to fix this.");
