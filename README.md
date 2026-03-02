@@ -87,15 +87,40 @@ make clean
 
 ---
 
-## 🛈 Project Status
+## 🐳 Testing with Docker
 
-This project is **actively evolving**.
+The project includes a Docker environment to simulate a real network with multiple users and a lookup server.
 
-- APIs are unstable
-- Architecture may change
-- Files and modules will be refactored frequently
+### 1. Build the Docker Image
+Ensure you have Docker and Docker Compose installed.
+```sh
+sudo docker-compose build --no-cache
+```
 
-Expect breaking changes.
+### 2. Start the Lookup Server
+Run the lookup server in the foreground to monitor registration and fetch requests:
+```sh
+sudo docker-compose up lookup
+```
+
+### 3. Run Interactive Clients
+Open separate terminal windows for each user:
+```sh
+# Terminal 2
+sudo docker-compose run user1
+
+# Terminal 3
+sudo docker-compose run user2
+
+# Terminal 4
+sudo docker-compose run user3
+```
+
+### 4. Cleanup
+To stop all containers and remove the virtual network:
+```sh
+sudo docker-compose down --remove-orphans
+```
 
 ---
 
