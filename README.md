@@ -70,7 +70,7 @@ cd chat-cli/
 ```sh
 make keygen
 make
-./chat-cli
+./chat-cli <username>
 ```
 
 > (Optional, not intended for client use) Make and run the lookup server

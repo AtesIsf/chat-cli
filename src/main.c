@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
   }
 
 
-  ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_IP)};
+  ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_ADDR)};
   int status_code = update_lookup_server(username, lookup_addr, client_ctx);
   if (status_code == -1) {
     puts("[WARNING] Could not update the lookup server with the current IP.");

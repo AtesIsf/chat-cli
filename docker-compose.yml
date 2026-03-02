@@ -2,6 +2,7 @@ services:
   lookup:
     build: .
     command: ./lookup
+    stdin_open: true
     tty: true
     networks:
       chat-net:

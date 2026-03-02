@@ -75,7 +75,7 @@ void display_chat_interface(sqlite3 *db, int id, const char *chat_name, const ch
     } else if (strlen(input_buf) > 0) {
       // Send logic
       bool success = false;
-      ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_IP)};
+      ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_ADDR)};
       ip_addr_t peer_addr = fetch_user_ip(chat_name, lookup_addr, ctx, &success);
       
       if (success) {
@@ -141,7 +141,6 @@ void cli_loop(sqlite3 *db, const char *username, SSL_CTX *ctx) {
       printf("%d) %s\n", i + 1, chat_names[i]);
     }
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    printf("- Select a chat to go to by typing a number below:\n");
     printf("- Select %d to start a NEW chat.\n", i + 1);
     printf("- Select %d to exit Chat-CLI.\n", i + 2);
     printf("- Enter 0 to REFRESH the chat list.\n");
@@ -205,7 +204,7 @@ void start_new_chat(sqlite3 *db, const char *my_username, SSL_CTX *ctx) {
   }
 
   bool success = false;
-  ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_IP)};
+  ip_addr_t lookup_addr = (ip_addr_t) { .family = AF_INET, .addr.v4.s_addr = htonl(LOOKUP_ADDR)};
   ip_addr_t peer_addr = fetch_user_ip(target_username, lookup_addr, ctx, &success);
 
   if (!success) {
