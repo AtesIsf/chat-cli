@@ -141,9 +141,9 @@ void cli_loop(sqlite3 *db, const char *username, SSL_CTX *ctx) {
       printf("%d) %s\n", i + 1, chat_names[i]);
     }
     puts("~~~~~~~~~~~~~~~~~~~~~~~~");
-    printf("- Select %d to start a NEW chat.\n", i + 1);
+    printf("- Select %d to start a new chat.\n", i + 1);
     printf("- Select %d to exit Chat-CLI.\n", i + 2);
-    printf("- Enter 0 to REFRESH the chat list.\n");
+    printf("- Enter 0 to refresh the chat list.\n");
 
     int return_val = scanf("%d", &choice);
     if (return_val != 1) {

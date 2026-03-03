@@ -94,6 +94,7 @@ The project includes a Docker environment to simulate a real network with multip
 ### 1. Build the Docker Image
 Ensure you have Docker and Docker Compose installed.
 ```sh
+# Terminal 1
 sudo docker-compose build --no-cache
 ```
 
@@ -108,10 +109,13 @@ Open separate terminal windows for each user:
 ```sh
 # Terminal 2
 sudo docker-compose run user1
+```
 
+```sh
 # Terminal 3
 sudo docker-compose run user2
 
+```sh
 # Terminal 4
 sudo docker-compose run user3
 ```
