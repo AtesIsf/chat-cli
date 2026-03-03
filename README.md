@@ -114,6 +114,7 @@ sudo docker-compose run user1
 ```sh
 # Terminal 3
 sudo docker-compose run user2
+```
 
 ```sh
 # Terminal 4
